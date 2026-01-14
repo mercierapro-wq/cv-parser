@@ -13,7 +13,9 @@ import {
   Phone,
   Linkedin,
   MapPin,
-  GraduationCap
+  GraduationCap,
+  FolderKanban,
+  Trophy
 } from "lucide-react";
 
 export default function CVPage() {
@@ -143,7 +145,7 @@ export default function CVPage() {
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
                         <h3 className="text-lg font-bold text-slate-900">{exp.poste}</h3>
                         <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full w-fit mt-1 sm:mt-0">
-                          {exp.periode}
+                          {exp.periode_debut} — {exp.periode_fin}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-600 mb-3 text-sm font-medium">
@@ -153,14 +155,44 @@ export default function CVPage() {
                       <p className="text-slate-600 leading-relaxed text-sm mb-4">
                         {exp.description}
                       </p>
-                      {exp.points_cles && exp.points_cles.length > 0 && (
+                      {exp.competences_cles && exp.competences_cles.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {exp.competences_cles.map((skill, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase tracking-wider">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {exp.details && exp.details.length > 0 && (
                         <ul className="list-disc list-inside text-sm text-slate-500 space-y-1">
-                          {exp.points_cles.map((point, i) => (
+                          {exp.details.map((point, i) => (
                             <li key={i}>{point}</li>
                           ))}
                         </ul>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Projects */}
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-cyan-100 rounded-lg text-cyan-600">
+                  <FolderKanban className="w-6 h-6" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">Projets</h2>
+              </div>
+              <div className="space-y-8">
+                {cvData.projets?.map((proj, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-slate-900">{proj.nom}</h3>
+                      <span className="text-xs font-medium text-slate-500">{proj.periode_debut} — {proj.periode_fin}</span>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed">{proj.description}</p>
                   </div>
                 ))}
               </div>
@@ -190,6 +222,28 @@ export default function CVPage() {
 
           {/* Sidebar */}
           <div className="space-y-8">
+            {/* Certifications */}
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+                  <Trophy className="w-6 h-6" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900">Certifications</h2>
+              </div>
+              <div className="space-y-4">
+                {cvData.certifications?.map((cert, index) => (
+                  <div key={index} className="space-y-1">
+                    <h3 className="font-bold text-slate-900 text-sm">{cert.nom}</h3>
+                    <div className="flex justify-between text-xs text-slate-500">
+                      <span>Score: {cert.score}</span>
+                      <span>{cert.date_obtention}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Skills */}
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">

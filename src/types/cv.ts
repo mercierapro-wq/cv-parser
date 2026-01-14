@@ -15,16 +15,30 @@ export interface Personne {
 export interface Experience {
   poste: string;
   entreprise: string;
-  periode: string;
+  periode_debut: string;
+  periode_fin: string;
   description: string;
-  points_cles: string[];
+  competences_cles: string[];
   details: string[];
+}
+
+export interface Projet {
+  nom: string;
+  description: string;
+  periode_debut: string;
+  periode_fin: string;
 }
 
 export interface Formation {
   diplome: string;
   etablissement: string;
   annee: string;
+}
+
+export interface Certification {
+  nom: string;
+  score: string;
+  date_obtention: string;
 }
 
 export interface Competences {
@@ -37,10 +51,8 @@ export interface CVData {
   personne: Personne;
   resume: string;
   experiences: Experience[];
+  projets: Projet[];
   formation: Formation[];
   competences: Competences;
-}
-
-export interface ParseCVResponse {
-  output: CVData;
+  certifications: Certification[];
 }

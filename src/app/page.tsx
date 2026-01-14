@@ -32,13 +32,25 @@ export default function Home() {
       }
 
       const responseData = await response.json();
-      const cvData = responseData[0]?.output;
+      
+      // Extraction robuste des données (gère output, tableau, ou racine)
+      let cvData = null;
+      
+      if (responseData.output) {
+        cvData = responseData.output;
+      } else if (Array.isArray(responseData) && responseData[0]?.output) {
+        cvData = responseData[0].output;
+      } else if (Array.isArray(responseData) && responseData[0]) {
+        cvData = responseData[0];
+      } else {
+        cvData = responseData;
+      }
       
       if (cvData) {
         localStorage.setItem("pending-cv-data", JSON.stringify(cvData));
         router.push("/cv/edit");
       } else {
-        throw new Error("Format de réponse invalide");
+        throw new Error("Format de réponse inconnu");
       }
 
     } catch (error) {
