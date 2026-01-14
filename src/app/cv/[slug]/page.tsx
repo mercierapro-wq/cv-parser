@@ -9,8 +9,11 @@ import {
   Award, 
   Building2, 
   ArrowLeft,
-  Download,
-  Share2
+  Mail,
+  Phone,
+  Linkedin,
+  MapPin,
+  GraduationCap
 } from "lucide-react";
 
 export default function CVPage() {
@@ -24,8 +27,9 @@ export default function CVPage() {
       const storedData = localStorage.getItem(`cv-data-${params.slug}`);
       if (storedData) {
         try {
-          // eslint-disable-next-line
-          setCvData(JSON.parse(storedData));
+          const parsed = JSON.parse(storedData);
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setCvData(parsed);
         } catch (e) {
           console.error("Erreur de parsing des données CV", e);
         }
@@ -80,23 +84,49 @@ export default function CVPage() {
               Retour
             </button>
 
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight">
-              {cvData.name}
+            <h1 className="text-4xl sm:text-5xl font-bold mb-2 tracking-tight">
+              {cvData.personne.prenom} {cvData.personne.nom}
             </h1>
-            <div className="flex flex-wrap gap-4 text-slate-300">
-              {/* Placeholder for role if available in future */}
+            <p className="text-xl text-indigo-400 font-medium mb-6">
+              {cvData.personne.titre_professionnel}
+            </p>
+            
+            <div className="flex flex-wrap gap-6 text-slate-300 text-sm">
               <span className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Profil Professionnel
+                <Mail className="w-4 h-4" />
+                {cvData.personne.contact.email}
               </span>
+              <span className="flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                {cvData.personne.contact.telephone}
+              </span>
+              <span className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                {cvData.personne.contact.ville}
+              </span>
+              {cvData.personne.contact.linkedin && (
+                <span className="flex items-center gap-2">
+                  <Linkedin className="w-4 h-4" />
+                  LinkedIn
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 sm:p-12">
           
-          {/* Main Content - Experience */}
-          <div className="md:col-span-2 space-y-8">
+          {/* Main Content */}
+          <div className="md:col-span-2 space-y-10">
+            {/* Resume */}
+            <section>
+              <h2 className="text-lg font-bold text-slate-900 mb-4 uppercase tracking-wider">Profil</h2>
+              <p className="text-slate-600 leading-relaxed">
+                {cvData.resume}
+              </p>
+            </section>
+
+            {/* Experience */}
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
@@ -106,31 +136,59 @@ export default function CVPage() {
               </div>
 
               <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
-                {cvData.experience.map((exp, index) => (
-                  <div key={index} className="relative flex items-start group is-active">
+                {cvData.experiences.map((exp, index) => (
+                  <div key={index} className="relative flex items-start group">
                     <div className="absolute left-0 ml-5 -translate-x-1/2 translate-y-1.5 border-2 border-slate-200 rounded-full bg-white w-3 h-3 group-hover:border-indigo-500 transition-colors"></div>
                     <div className="pl-10 w-full">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
-                        <h3 className="text-lg font-bold text-slate-900">{exp.title}</h3>
+                        <h3 className="text-lg font-bold text-slate-900">{exp.poste}</h3>
                         <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full w-fit mt-1 sm:mt-0">
-                          {exp.duration}
+                          {exp.periode}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-600 mb-3 text-sm font-medium">
                         <Building2 className="w-4 h-4" />
-                        {exp.company}
+                        {exp.entreprise}
                       </div>
-                      <p className="text-slate-600 leading-relaxed text-sm sm:text-base">
+                      <p className="text-slate-600 leading-relaxed text-sm mb-4">
                         {exp.description}
                       </p>
+                      {exp.points_cles && exp.points_cles.length > 0 && (
+                        <ul className="list-disc list-inside text-sm text-slate-500 space-y-1">
+                          {exp.points_cles.map((point, i) => (
+                            <li key={i}>{point}</li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Formation */}
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">Formation</h2>
+              </div>
+              <div className="space-y-6">
+                {cvData.formation.map((form, index) => (
+                  <div key={index} className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-slate-900">{form.diplome}</h3>
+                      <p className="text-slate-600">{form.etablissement}</p>
+                    </div>
+                    <span className="text-sm font-medium text-slate-500">{form.annee}</span>
                   </div>
                 ))}
               </div>
             </section>
           </div>
 
-          {/* Sidebar - Skills & Actions */}
+          {/* Sidebar */}
           <div className="space-y-8">
             <section>
               <div className="flex items-center gap-3 mb-6">
@@ -140,38 +198,37 @@ export default function CVPage() {
                 <h2 className="text-xl font-bold text-slate-900">Compétences</h2>
               </div>
               
-              <div className="flex flex-wrap gap-2">
-                {cvData.skills.map((skill, index) => (
-                  <span 
-                    key={index}
-                    className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors cursor-default"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            {/* Actions Section (Print/Share) */}
-            <section className="pt-8 border-t border-slate-100 print:hidden">
-              <div className="flex flex-col gap-3">
-                <button 
-                  onClick={() => window.print()}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium"
-                >
-                  <Download className="w-4 h-4" />
-                  Télécharger en PDF
-                </button>
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
-                    alert("Lien copié dans le presse-papier !");
-                  }}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
-                >
-                  <Share2 className="w-4 h-4" />
-                  Partager le profil
-                </button>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Hard Skills</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {cvData.competences.hard_skills.map((skill, index) => (
+                      <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Soft Skills</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {cvData.competences.soft_skills.map((skill, index) => (
+                      <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Langues</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {cvData.competences.langues.map((lang, index) => (
+                      <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium">
+                        {lang}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </section>
           </div>

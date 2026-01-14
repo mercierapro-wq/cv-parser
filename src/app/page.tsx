@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUpload } from "@/components/ui/file-upload";
-import { CVData } from "@/types/cv";
 import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 
 export default function Home() {
@@ -32,15 +31,14 @@ export default function Home() {
         throw new Error("Erreur lors de l'analyse du CV");
       }
 
-      const data: CVData = await response.json();
+      const responseData = await response.json();
+      const cvData = responseData[0]?.output;
       
-      // Pour la démo, on sauvegarde les données dans le localStorage
-      // Dans une vraie app, cela serait stocké en base de données
-      if (data.slug) {
-        localStorage.setItem(`cv-data-${data.slug}`, JSON.stringify(data));
-        router.push(`/cv/${data.slug}`);
+      if (cvData) {
+        localStorage.setItem("pending-cv-data", JSON.stringify(cvData));
+        router.push("/cv/edit");
       } else {
-        throw new Error("Format de réponse invalide : slug manquant");
+        throw new Error("Format de réponse invalide");
       }
 
     } catch (error) {
