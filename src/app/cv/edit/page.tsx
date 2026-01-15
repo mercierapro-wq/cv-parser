@@ -137,9 +137,18 @@ export default function EditCVPage() {
         throw new Error("Erreur lors de la publication du CV");
       }
 
+      const result = await response.json();
+      const slug = result[0]?.slug;
+
+      if (!slug) {
+        throw new Error("Le serveur n'a pas renvoyé de slug valide");
+      }
+
       alert("CV publié avec succès !");
       localStorage.removeItem("pending-cv-data");
-      router.push("/");
+      
+      // Redirection vers la page du CV (/slug) renvoyé par le backend
+      router.push(`/cv/${slug}`);
     } catch (error) {
       console.error("Erreur:", error);
       alert("Une erreur est survenue lors de la publication du CV.");
