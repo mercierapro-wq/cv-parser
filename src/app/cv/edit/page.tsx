@@ -194,7 +194,7 @@ export default function EditCVPage() {
       competences_cles: [],
       details: []
     };
-    setCvData({ ...cvData, experiences: [...cvData.experiences, newExp] });
+    setCvData({ ...cvData, experiences: [newExp, ...cvData.experiences] });
   };
 
   const removeExperience = (index: number) => {
@@ -237,7 +237,7 @@ export default function EditCVPage() {
       periode_debut: "",
       periode_fin: ""
     };
-    setCvData({ ...cvData, projets: [...cvData.projets, newProj] });
+    setCvData({ ...cvData, projets: [newProj, ...cvData.projets] });
   };
 
   const removeProjet = (index: number) => {
@@ -257,7 +257,7 @@ export default function EditCVPage() {
       score: "",
       date_obtention: ""
     };
-    setCvData({ ...cvData, certifications: [...cvData.certifications, newCert] });
+    setCvData({ ...cvData, certifications: [newCert, ...cvData.certifications] });
   };
 
   const removeCertification = (index: number) => {
@@ -277,7 +277,7 @@ export default function EditCVPage() {
       etablissement: "",
       annee: ""
     };
-    setCvData({ ...cvData, formation: [...cvData.formation, newForm] });
+    setCvData({ ...cvData, formation: [newForm, ...cvData.formation] });
   };
 
   const removeFormation = (index: number) => {
