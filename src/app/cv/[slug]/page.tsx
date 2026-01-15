@@ -1,283 +1,254 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import { CVData } from "@/types/cv";
 import { 
+  Mail, 
+  Phone, 
+  Linkedin, 
+  MapPin, 
   Briefcase, 
-  User, 
+  GraduationCap, 
+  FolderKanban, 
   Award, 
-  Building2, 
-  ArrowLeft,
-  Mail,
-  Phone,
-  Linkedin,
-  MapPin,
-  GraduationCap,
-  FolderKanban,
-  Trophy
+  Wrench,
+  User
 } from "lucide-react";
 
-export default function CVPage() {
-  const params = useParams();
-  const router = useRouter();
-  const [cvData, setCvData] = useState<CVData | null>(null);
-  const [loading, setLoading] = useState(true);
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
 
-  useEffect(() => {
-    if (params.slug) {
-      const storedData = localStorage.getItem(`cv-data-${params.slug}`);
-      if (storedData) {
-        try {
-          const parsed = JSON.parse(storedData);
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setCvData(parsed);
-        } catch (e) {
-          console.error("Erreur de parsing des données CV", e);
-        }
-      }
-    }
-    setLoading(false);
-  }, [params.slug]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-12 w-12 bg-slate-200 rounded-full mb-4"></div>
-          <div className="h-4 w-32 bg-slate-200 rounded"></div>
-        </div>
-      </div>
-    );
+async function getCVData(slug: string): Promise<CVData | null> {
+  const baseUrl = process.env.N8N_WEBHOOK_BASE_URL;
+  if (!baseUrl) {
+    console.error("N8N_WEBHOOK_BASE_URL is not defined");
+    return null;
   }
 
+  const url = `${baseUrl}${slug}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const result = await response.json();
+    
+    // Selon la structure n8n : data du premier élément du tableau
+    if (Array.isArray(result) && result.length > 0 && result[0].data) {
+      return result[0].data as CVData;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error fetching CV data:", error);
+    return null;
+  }
+}
+
+export default async function CVProfilePage({ params }: PageProps) {
+  const { slug } = await params;
+  const cvData = await getCVData(slug);
+
   if (!cvData) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">CV introuvable</h1>
-        <p className="text-slate-600 mb-6">Les données de ce CV ne sont pas disponibles ou ont expiré.</p>
-        <button 
-          onClick={() => router.push("/")}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour à l&apos;accueil
-        </button>
-      </div>
-    );
+    notFound();
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8 print:bg-white print:p-0">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden print:shadow-none print:rounded-none">
+    <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-5xl mx-auto space-y-8">
         
-        {/* Header / Profile Section */}
-        <div className="bg-slate-900 text-white p-8 sm:p-12 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <User className="w-64 h-64" />
-          </div>
-          
-          <div className="relative z-10">
-            <button 
-              onClick={() => router.push("/")}
-              className="mb-8 flex items-center gap-2 text-slate-300 hover:text-white transition-colors print:hidden"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Retour
-            </button>
-
-            <h1 className="text-4xl sm:text-5xl font-bold mb-2 tracking-tight">
-              {cvData.personne.prenom} {cvData.personne.nom}
-            </h1>
-            <p className="text-xl text-indigo-400 font-medium mb-6">
-              {cvData.personne.titre_professionnel}
-            </p>
+        {/* Header Card */}
+        <header className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-8 sm:p-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <h1 className="text-4xl sm:text-5xl font-serif font-bold text-slate-900 tracking-tight">
+                  {cvData.personne.prenom} {cvData.personne.nom}
+                </h1>
+                <p className="text-xl text-indigo-600 font-medium font-sans">
+                  {cvData.personne.titre_professionnel}
+                </p>
+              </div>
+              
+              <div className="flex flex-wrap gap-y-3 gap-x-6 text-slate-500 text-sm">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-slate-400" />
+                  <a href={`mailto:${cvData.personne.contact.email}`} className="hover:text-indigo-600 transition-colors">
+                    {cvData.personne.contact.email}
+                  </a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-slate-400" />
+                  <span>{cvData.personne.contact.telephone}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-slate-400" />
+                  <span>{cvData.personne.contact.ville}</span>
+                </div>
+                {cvData.personne.contact.linkedin && (
+                  <div className="flex items-center gap-2">
+                    <Linkedin className="w-4 h-4 text-slate-400" />
+                    <a href={cvData.personne.contact.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors">
+                      LinkedIn
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
             
-            <div className="flex flex-wrap gap-6 text-slate-300 text-sm">
-              <span className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                {cvData.personne.contact.email}
-              </span>
-              <span className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                {cvData.personne.contact.telephone}
-              </span>
-              <span className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                {cvData.personne.contact.ville}
-              </span>
-              {cvData.personne.contact.linkedin && (
-                <span className="flex items-center gap-2">
-                  <Linkedin className="w-4 h-4" />
-                  LinkedIn
-                </span>
-              )}
+            <div className="hidden md:block">
+              <div className="w-24 h-24 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-200 border border-slate-100">
+                <User className="w-12 h-12" />
+              </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 sm:p-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Main Content */}
-          <div className="md:col-span-2 space-y-10">
-            {/* Resume */}
-            <section>
-              <h2 className="text-lg font-bold text-slate-900 mb-4 uppercase tracking-wider">Profil</h2>
-              <p className="text-slate-600 leading-relaxed">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Profil / Résumé */}
+            <section className="bg-white p-8 sm:p-10 rounded-3xl shadow-sm border border-slate-200 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                  <User className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-serif font-bold text-slate-900">Profil Professionnel</h2>
+              </div>
+              <p className="text-slate-600 leading-relaxed font-sans whitespace-pre-line">
                 {cvData.resume}
               </p>
             </section>
 
-            {/* Experience */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                  <Briefcase className="w-6 h-6" />
+            {/* Expériences */}
+            <section className="bg-white p-8 sm:p-10 rounded-3xl shadow-sm border border-slate-200 space-y-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 rounded-xl text-blue-600">
+                  <Briefcase className="w-5 h-5" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900">Expérience Professionnelle</h2>
+                <h2 className="text-xl font-serif font-bold text-slate-900">Parcours Professionnel</h2>
               </div>
 
-              <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+              <div className="space-y-10">
                 {cvData.experiences.map((exp, index) => (
-                  <div key={index} className="relative flex items-start group">
-                    <div className="absolute left-0 ml-5 -translate-x-1/2 translate-y-1.5 border-2 border-slate-200 rounded-full bg-white w-3 h-3 group-hover:border-indigo-500 transition-colors"></div>
-                    <div className="pl-10 w-full">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
+                  <div key={index} className="relative pl-8 border-l-2 border-slate-100 space-y-4 last:pb-0">
+                    <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-indigo-500 shadow-sm" />
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
                         <h3 className="text-lg font-bold text-slate-900">{exp.poste}</h3>
-                        <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full w-fit mt-1 sm:mt-0">
-                          {exp.periode_debut} — {exp.periode_fin}
-                        </span>
+                        <p className="text-indigo-600 font-medium">{exp.entreprise}</p>
                       </div>
-                      <div className="flex items-center gap-2 text-slate-600 mb-3 text-sm font-medium">
-                        <Building2 className="w-4 h-4" />
-                        {exp.entreprise}
+                      <span className="text-sm font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-full w-fit">
+                        {exp.periode_debut} — {exp.periode_fin}
+                      </span>
+                    </div>
+
+                    <p className="text-slate-600 text-sm leading-relaxed">
+                      {exp.description}
+                    </p>
+
+                    {exp.details && exp.details.length > 0 && (
+                      <ul className="space-y-2">
+                        {exp.details.map((detail, i) => (
+                          <li key={i} className="text-sm text-slate-500 flex items-start gap-2">
+                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                            {detail}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {exp.competences_cles && exp.competences_cles.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {exp.competences_cles.map((skill, i) => (
+                          <span key={i} className="px-2 py-1 bg-slate-50 text-slate-500 rounded-md text-[10px] font-bold uppercase tracking-wider border border-slate-100">
+                            {skill}
+                          </span>
+                        ))}
                       </div>
-                      <p className="text-slate-600 leading-relaxed text-sm mb-4">
-                        {exp.description}
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Projets */}
+            {cvData.projets && cvData.projets.length > 0 && (
+              <section className="bg-white p-8 sm:p-10 rounded-3xl shadow-sm border border-slate-200 space-y-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-cyan-50 rounded-xl text-cyan-600">
+                    <FolderKanban className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-serif font-bold text-slate-900">Réalisations & Projets</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {cvData.projets.map((proj, index) => (
+                    <div key={index} className="p-6 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
+                      <div className="flex justify-between items-start gap-2">
+                        <h3 className="font-bold text-slate-900 leading-tight">{proj.nom}</h3>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{proj.periode_debut}</span>
+                      </div>
+                      <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+                        {proj.description}
                       </p>
-                      {exp.competences_cles && exp.competences_cles.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {exp.competences_cles.map((skill, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase tracking-wider">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {exp.details && exp.details.length > 0 && (
-                        <ul className="list-disc list-inside text-sm text-slate-500 space-y-1">
-                          {exp.details.map((point, i) => (
-                            <li key={i}>{point}</li>
-                          ))}
-                        </ul>
-                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Projects */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-cyan-100 rounded-lg text-cyan-600">
-                  <FolderKanban className="w-6 h-6" />
+                  ))}
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900">Projets</h2>
-              </div>
-              <div className="space-y-8">
-                {cvData.projets?.map((proj, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-slate-900">{proj.nom}</h3>
-                      <span className="text-xs font-medium text-slate-500">{proj.periode_debut} — {proj.periode_fin}</span>
-                    </div>
-                    <p className="text-sm text-slate-600 leading-relaxed">{proj.description}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Formation */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
-                  <GraduationCap className="w-6 h-6" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900">Formation</h2>
-              </div>
-              <div className="space-y-6">
-                {cvData.formation.map((form, index) => (
-                  <div key={index} className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-slate-900">{form.diplome}</h3>
-                      <p className="text-slate-600">{form.etablissement}</p>
-                    </div>
-                    <span className="text-sm font-medium text-slate-500">{form.annee}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
+              </section>
+            )}
           </div>
 
-          {/* Sidebar */}
+          {/* Right Column - Sidebar */}
           <div className="space-y-8">
-            {/* Certifications */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
-                  <Trophy className="w-6 h-6" />
+            
+            {/* Compétences */}
+            <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
+                  <Wrench className="w-5 h-5" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Certifications</h2>
+                <h2 className="text-xl font-serif font-bold text-slate-900">Expertise</h2>
               </div>
-              <div className="space-y-4">
-                {cvData.certifications?.map((cert, index) => (
-                  <div key={index} className="space-y-1">
-                    <h3 className="font-bold text-slate-900 text-sm">{cert.nom}</h3>
-                    <div className="flex justify-between text-xs text-slate-500">
-                      <span>Score: {cert.score}</span>
-                      <span>{cert.date_obtention}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
 
-            {/* Skills */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
-                  <Award className="w-6 h-6" />
-                </div>
-                <h2 className="text-xl font-bold text-slate-900">Compétences</h2>
-              </div>
-              
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Hard Skills</h3>
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hard Skills</h3>
                   <div className="flex flex-wrap gap-2">
-                    {cvData.competences.hard_skills.map((skill, index) => (
-                      <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium">
+                    {cvData.competences.hard_skills.map((skill, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-medium border border-indigo-100">
                         {skill}
                       </span>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Soft Skills</h3>
+
+                <div className="space-y-4">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Soft Skills</h3>
                   <div className="flex flex-wrap gap-2">
-                    {cvData.competences.soft_skills.map((skill, index) => (
-                      <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium">
+                    {cvData.competences.soft_skills.map((skill, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-xl text-sm font-medium border border-slate-100">
                         {skill}
                       </span>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Langues</h3>
+
+                <div className="space-y-4">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Langues</h3>
                   <div className="flex flex-wrap gap-2">
-                    {cvData.competences.langues.map((lang, index) => (
-                      <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium">
+                    {cvData.competences.langues.map((lang, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-white text-slate-700 rounded-xl text-sm font-bold border border-slate-200 shadow-sm">
                         {lang}
                       </span>
                     ))}
@@ -285,8 +256,53 @@ export default function CVPage() {
                 </div>
               </div>
             </section>
-          </div>
 
+            {/* Éducation */}
+            <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-50 rounded-xl text-orange-600">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-serif font-bold text-slate-900">Éducation</h2>
+              </div>
+              <div className="space-y-6">
+                {cvData.formation.map((form, index) => (
+                  <div key={index} className="space-y-1">
+                    <h3 className="font-bold text-slate-900 text-sm leading-tight">{form.diplome}</h3>
+                    <p className="text-slate-500 text-xs">{form.etablissement}</p>
+                    <p className="text-indigo-600 text-[10px] font-bold uppercase">{form.annee}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Certifications */}
+            {cvData.certifications && cvData.certifications.length > 0 && (
+              <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-50 rounded-xl text-amber-600">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-serif font-bold text-slate-900">Certifications</h2>
+                </div>
+                <div className="space-y-4">
+                  {cvData.certifications.map((cert, index) => (
+                    <div key={index} className="flex items-center justify-between gap-4 p-3 rounded-2xl bg-amber-50/50 border border-amber-100">
+                      <div className="space-y-0.5">
+                        <h3 className="font-bold text-slate-900 text-xs leading-tight">{cert.nom}</h3>
+                        <p className="text-[10px] text-amber-700 font-medium">{cert.date_obtention}</p>
+                      </div>
+                      {cert.score && (
+                        <span className="text-xs font-bold text-amber-600 bg-white px-2 py-1 rounded-lg shadow-sm shrink-0">
+                          {cert.score}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
         </div>
       </div>
     </div>
