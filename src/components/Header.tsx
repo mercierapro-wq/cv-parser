@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Home } from "lucide-react";
+import LoginButton from "./LoginButton";
 
 export default function Header() {
   return (
@@ -28,6 +29,7 @@ export default function Header() {
               <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span>Home</span>
             </Link>
+            <LoginButton />
           </nav>
         </div>
       </div>
