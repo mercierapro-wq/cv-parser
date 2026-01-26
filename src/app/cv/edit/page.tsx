@@ -24,6 +24,17 @@ export default function EditCVPage() {
   const router = useRouter();
   const [cvData, setCvData] = useState<CVData | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Auto-hide notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const formatParsedDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -110,11 +121,15 @@ export default function EditCVPage() {
 
     // Validation Email
     if (!cvData.personne.contact.email.trim()) {
-      alert("L'adresse email est obligatoire pour publier le CV.");
+      setNotification({ 
+        message: "L'adresse email est obligatoire pour publier le CV.", 
+        type: 'error' 
+      });
       return;
     }
 
     setIsPublishing(true);
+    setNotification(null);
 
     try {
       const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL || "https://souplike-marjorie-fierily.ngrok-free.dev/webhook/insert_cv";
@@ -138,14 +153,22 @@ export default function EditCVPage() {
         throw new Error("Le serveur n'a pas renvoyé de slug valide");
       }
 
-      alert("CV publié avec succès !");
+      setNotification({ 
+        message: "CV publié avec succès !", 
+        type: 'success' 
+      });
       localStorage.removeItem("pending-cv-data");
       
-      // Redirection vers la page du CV (/slug) renvoyé par le backend
-      router.push(`/cv/${slug}`);
+      // Redirection vers la page du CV (/slug) renvoyé par le backend après un court délai
+      setTimeout(() => {
+        router.push(`/cv/${slug}`);
+      }, 1500);
     } catch (error) {
       console.error("Erreur:", error);
-      alert("Une erreur est survenue lors de la publication du CV.");
+      setNotification({ 
+        message: "Une erreur est survenue lors de la publication du CV.", 
+        type: 'error' 
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -300,6 +323,34 @@ export default function EditCVPage() {
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-8">
         
+        {/* Notifications */}
+        {notification && (
+          <div 
+            className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
+              notification.type === 'success' 
+                ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+                : 'bg-red-50 border-red-100 text-red-800'
+            }`}
+          >
+            <div className={`p-1.5 rounded-full ${
+              notification.type === 'success' ? 'bg-emerald-200 text-emerald-700' : 'bg-red-200 text-red-700'
+            }`}>
+              {notification.type === 'success' ? (
+                <Save className="w-4 h-4" />
+              ) : (
+                <X className="w-4 h-4" />
+              )}
+            </div>
+            <p className="font-bold text-sm">{notification.message}</p>
+            <button 
+              onClick={() => setNotification(null)}
+              className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div>

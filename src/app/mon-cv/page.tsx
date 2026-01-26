@@ -22,9 +22,12 @@ import {
   Loader2,
   FilePlus,
   Lock,
-  LogIn
+  LogIn,
+  Eye,
+  Edit3
 } from "lucide-react";
 import Link from "next/link";
+import CVDisplay from "@/components/CVDisplay";
 
 export default function MonCVPage() {
   const router = useRouter();
@@ -33,6 +36,18 @@ export default function MonCVPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Auto-hide notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     const fetchCV = async () => {
@@ -123,11 +138,15 @@ export default function MonCVPage() {
 
     // Validation Email
     if (!cvData.personne.contact.email.trim()) {
-      alert("L'adresse email est obligatoire pour enregistrer le CV.");
+      setNotification({ 
+        message: "L'adresse email est obligatoire pour enregistrer le CV.", 
+        type: 'error' 
+      });
       return;
     }
 
     setIsSaving(true);
+    setNotification(null); // Clear previous notifications
 
     try {
       const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL;
@@ -155,13 +174,21 @@ export default function MonCVPage() {
         throw new Error("Le serveur n'a pas renvoyé de slug valide");
       }
 
-      alert("CV enregistré avec succès !");
+      setNotification({ 
+        message: "CV enregistré avec succès !", 
+        type: 'success' 
+      });
       
-      // Redirection vers la page du CV (/cv/slug)
-      router.push(`/cv/${slug}`);
+      // Redirection vers la page du CV (/cv/slug) après un court délai pour laisser voir le message
+      setTimeout(() => {
+        router.push(`/cv/${slug}`);
+      }, 1500);
     } catch (error) {
       console.error("Erreur:", error);
-      alert("Une erreur est survenue lors de l'enregistrement du CV.");
+      setNotification({ 
+        message: "Une erreur est survenue lors de l'enregistrement du CV.", 
+        type: 'error' 
+      });
     } finally {
       setIsSaving(false);
     }
@@ -399,13 +426,70 @@ export default function MonCVPage() {
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-8">
         
+        {/* Notifications */}
+        {notification && (
+          <div 
+            className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
+              notification.type === 'success' 
+                ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+                : 'bg-red-50 border-red-100 text-red-800'
+            }`}
+          >
+            <div className={`p-1.5 rounded-full ${
+              notification.type === 'success' ? 'bg-emerald-200 text-emerald-700' : 'bg-red-200 text-red-700'
+            }`}>
+              {notification.type === 'success' ? (
+                <Save className="w-4 h-4" />
+              ) : (
+                <X className="w-4 h-4" />
+              )}
+            </div>
+            <p className="font-bold text-sm">{notification.message}</p>
+            <button 
+              onClick={() => setNotification(null)}
+              className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <div>
+          <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-bold text-slate-900">Mon CV</h1>
             <p className="text-slate-500">Gérez et modifiez vos informations professionnelles.</p>
           </div>
-          <div className="flex gap-3 w-full sm:w-auto">
+          
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+            {/* Toggle View */}
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button
+                onClick={() => setShowPreview(false)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  !showPreview 
+                    ? "bg-white text-indigo-600 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <Edit3 className="w-4 h-4" />
+                Édition
+              </button>
+              <button
+                onClick={() => setShowPreview(true)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  showPreview 
+                    ? "bg-white text-indigo-600 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <Eye className="w-4 h-4" />
+                Aperçu
+              </button>
+            </div>
+
+            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+
             <button
               onClick={handleSave}
               disabled={isSaving}
@@ -421,7 +505,12 @@ export default function MonCVPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {showPreview ? (
+          <div className="animate-in fade-in duration-500">
+            <CVDisplay data={cvData} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
           
           {/* Left Column - Personal Info, Certifications & Skills */}
           <div className="space-y-8">
@@ -885,6 +974,7 @@ export default function MonCVPage() {
             </section>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

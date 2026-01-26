@@ -3,11 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUpload } from "@/components/ui/file-upload";
-import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, Sparkles, X } from "lucide-react";
+import { useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Auto-hide notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const handleFileSelect = async (file: File) => {
     setIsUploading(true);
@@ -55,13 +67,44 @@ export default function Home() {
 
     } catch (error) {
       console.error("Erreur:", error);
-      alert("Une erreur est survenue lors de l'analyse du CV. Veuillez réessayer.");
+      setNotification({ 
+        message: "Une erreur est survenue lors de l'analyse du CV. Veuillez réessayer.", 
+        type: 'error' 
+      });
       setIsUploading(false);
     }
   };
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4 sm:p-8">
+      {/* Notifications */}
+      {notification && (
+        <div 
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
+            notification.type === 'success' 
+              ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+              : 'bg-red-50 border-red-100 text-red-800'
+          }`}
+        >
+          <div className={`p-1.5 rounded-full ${
+            notification.type === 'success' ? 'bg-emerald-200 text-emerald-700' : 'bg-red-200 text-red-700'
+          }`}>
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4" />
+            ) : (
+              <X className="w-4 h-4" />
+            )}
+          </div>
+          <p className="font-bold text-sm">{notification.message}</p>
+          <button 
+            onClick={() => setNotification(null)}
+            className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="w-full max-w-4xl mx-auto text-center space-y-8">
         
         {/* Header Section */}

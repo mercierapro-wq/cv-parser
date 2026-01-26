@@ -79,20 +79,26 @@ export default async function CVProfilePage({ params }: PageProps) {
               </div>
               
               <div className="flex flex-wrap gap-y-3 gap-x-6 text-slate-500 text-sm">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-slate-400" />
-                  <a href={`mailto:${cvData.personne.contact.email}`} className="hover:text-indigo-600 transition-colors">
-                    {cvData.personne.contact.email}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-slate-400" />
-                  <span>{cvData.personne.contact.telephone}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                  <span>{cvData.personne.contact.ville}</span>
-                </div>
+                {cvData.personne.contact.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-slate-400" />
+                    <a href={`mailto:${cvData.personne.contact.email}`} className="hover:text-indigo-600 transition-colors">
+                      {cvData.personne.contact.email}
+                    </a>
+                  </div>
+                )}
+                {cvData.personne.contact.telephone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <span>{cvData.personne.contact.telephone}</span>
+                  </div>
+                )}
+                {cvData.personne.contact.ville && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <span>{cvData.personne.contact.ville}</span>
+                  </div>
+                )}
                 {cvData.personne.contact.linkedin && (
                   <div className="flex items-center gap-2">
                     <Linkedin className="w-4 h-4 text-slate-400" />
@@ -192,14 +198,19 @@ export default async function CVProfilePage({ params }: PageProps) {
                   </div>
                   <h2 className="text-xl font-serif font-bold text-slate-900">Réalisations & Projets</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-10">
                   {cvData.projets.map((proj, index) => (
-                    <div key={index} className="p-6 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
-                      <div className="flex justify-between items-start gap-2">
-                        <h3 className="font-bold text-slate-900 leading-tight">{proj.nom}</h3>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">{proj.periode_debut}</span>
+                    <div key={index} className="relative pl-8 border-l-2 border-slate-100 space-y-3 last:pb-0">
+                      {/* Square marker for projects to differentiate from circles in experiences */}
+                      <div className="absolute -left-[9px] top-0 w-4 h-4 rounded bg-white border-2 border-cyan-500 shadow-sm" />
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 className="text-lg font-bold text-slate-900">{proj.nom}</h3>
+                        <span className="text-sm font-medium text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full w-fit">
+                          {proj.periode_debut} {proj.periode_fin ? `— ${proj.periode_fin}` : ''}
+                        </span>
                       </div>
-                      <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+                      <p className="text-slate-600 text-sm leading-relaxed">
                         {proj.description}
                       </p>
                     </div>
