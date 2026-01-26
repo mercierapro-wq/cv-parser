@@ -20,27 +20,26 @@ import {
   Award,
   X,
   Loader2,
-  FilePlus
+  FilePlus,
+  Lock,
+  LogIn
 } from "lucide-react";
 import Link from "next/link";
 
 export default function MonCVPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const [cvData, setCvData] = useState<CVData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/");
-    }
-  }, [user, authLoading, router]);
-
-  useEffect(() => {
     const fetchCV = async () => {
-      if (!user?.email) return;
+      if (!user?.email) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
         setIsLoading(true);
@@ -57,6 +56,11 @@ export default function MonCVPage() {
           },
           body: JSON.stringify({ email: user.email }),
         });
+
+        if (response.status === 404) {
+          setCvData(null);
+          return;
+        }
 
         if (!response.ok) {
           throw new Error("Erreur lors de la récupération du CV");
@@ -109,8 +113,10 @@ export default function MonCVPage() {
 
     if (user) {
       fetchCV();
+    } else if (!authLoading) {
+      setIsLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const handleSave = async () => {
     if (!cvData) return;
@@ -337,6 +343,29 @@ export default function MonCVPage() {
             className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-semibold"
           >
             Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-200 text-center max-w-lg">
+          <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-10 h-10" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Accès réservé</h2>
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            Vous devez être connecté pour accéder à votre espace personnel et gérer vos CV.
+          </p>
+          <button 
+            onClick={() => login()}
+            className="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-100"
+          >
+            <LogIn className="w-5 h-5" />
+            Se connecter
           </button>
         </div>
       </div>
