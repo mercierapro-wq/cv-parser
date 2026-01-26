@@ -12,7 +12,7 @@ export default function CVNotFound() {
         <div className="space-y-2">
           <h1 className="text-3xl font-serif font-bold text-slate-900">CV Introuvable</h1>
           <p className="text-slate-500 font-sans">
-            Désolé, nous n'avons pas pu trouver le profil que vous recherchez. Il est possible que le lien soit incorrect ou que le CV ait été supprimé.
+            Désolé, nous n&apos;avons pas pu trouver le profil que vous recherchez. Il est possible que le lien soit incorrect ou que le CV ait été supprimé.
           </p>
         </div>
 
@@ -21,7 +21,7 @@ export default function CVNotFound() {
           className="inline-flex items-center justify-center gap-2 w-full px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-semibold shadow-lg shadow-indigo-200"
         >
           <ArrowLeft className="w-4 h-4" />
-          Retour à l'accueil
+          Retour à l&apos;accueil
         </Link>
       </div>
     </div>

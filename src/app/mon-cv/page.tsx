@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { CVData, Experience, Formation, Projet, Certification } from "@/types/cv";
 import { 
   Briefcase, 
@@ -9,7 +10,6 @@ import {
   GraduationCap, 
   Wrench, 
   Save, 
-  X, 
   Plus, 
   Trash2,
   Mail,
@@ -17,108 +17,119 @@ import {
   Linkedin,
   MapPin,
   FolderKanban,
-  Award
+  Award,
+  X,
+  Loader2,
+  FilePlus
 } from "lucide-react";
+import Link from "next/link";
 
-export default function EditCVPage() {
+export default function MonCVPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [cvData, setCvData] = useState<CVData | null>(null);
-  const [isPublishing, setIsPublishing] = useState(false);
-
-  const formatParsedDate = (dateStr: string) => {
-    if (!dateStr) return "";
-    
-    const monthsMap: { [key: string]: string } = {
-      'janvier': '01', 'février': '02', 'mars': '03', 'avril': '04', 'mai': '05', 'juin': '06',
-      'juillet': '07', 'août': '08', 'septembre': '09', 'octobre': '10', 'novembre': '11', 'décembre': '12',
-      'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
-      'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
-    };
-
-    const normalized = dateStr.toLowerCase().trim();
-    
-    // Essayer de trouver un mois textuel suivi d'une année
-    for (const [monthName, monthNum] of Object.entries(monthsMap)) {
-      if (normalized.includes(monthName)) {
-        const yearMatch = normalized.match(/\d{4}/);
-        if (yearMatch) {
-          return `${monthNum}/${yearMatch[0]}`;
-        }
-      }
-    }
-
-    return dateStr; // Retourne tel quel si pas de correspondance
-  };
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedData = localStorage.getItem("pending-cv-data");
-    if (storedData) {
-      try {
-        const parsed = JSON.parse(storedData);
-        
-        // Normalisation des données avec transformation des dates
-        const normalizedData: CVData = {
-          personne: {
-            prenom: parsed.personne?.prenom || "",
-            nom: parsed.personne?.nom || "",
-            titre_professionnel: parsed.personne?.titre_professionnel || "",
-            contact: {
-              email: parsed.personne?.contact?.email || "",
-              telephone: parsed.personne?.contact?.telephone || "",
-              linkedin: parsed.personne?.contact?.linkedin || "",
-              ville: parsed.personne?.contact?.ville || ""
-            }
-          },
-          resume: parsed.resume || "",
-          experiences: (Array.isArray(parsed.experiences) ? parsed.experiences : []).map((exp: Experience) => ({
-            ...exp,
-            periode_debut: formatParsedDate(exp.periode_debut),
-            periode_fin: formatParsedDate(exp.periode_fin)
-          })),
-          projets: (Array.isArray(parsed.projets) ? parsed.projets : []).map((proj: Projet) => ({
-            ...proj,
-            periode_debut: formatParsedDate(proj.periode_debut),
-            periode_fin: formatParsedDate(proj.periode_fin)
-          })),
-          formation: (Array.isArray(parsed.formation) ? parsed.formation : []).map((form: Formation) => ({
-            ...form,
-            annee: formatParsedDate(form.annee)
-          })),
-          competences: {
-            soft_skills: Array.isArray(parsed.competences?.soft_skills) ? parsed.competences.soft_skills : [],
-            hard_skills: Array.isArray(parsed.competences?.hard_skills) ? parsed.competences.hard_skills : [],
-            langues: Array.isArray(parsed.competences?.langues) ? parsed.competences.langues : []
-          },
-          certifications: (Array.isArray(parsed.certifications) ? parsed.certifications : []).map((cert: Certification) => ({
-            ...cert,
-            date_obtention: formatParsedDate(cert.date_obtention)
-          }))
-        };
-        
-        setCvData(normalizedData);
-      } catch (e) {
-        console.error("Erreur de parsing des données CV", e);
-        router.push("/");
-      }
-    } else {
+    if (!authLoading && !user) {
       router.push("/");
     }
-  }, [router]);
+  }, [user, authLoading, router]);
 
-  const handlePublish = async () => {
+  useEffect(() => {
+    const fetchCV = async () => {
+      if (!user?.email) return;
+
+      try {
+        setIsLoading(true);
+        const getCvUrl = process.env.NEXT_PUBLIC_GET_CV_URL;
+        
+        if (!getCvUrl) {
+          throw new Error("La variable d'environnement NEXT_PUBLIC_GET_CV_URL n'est pas définie");
+        }
+        
+        const response = await fetch(getCvUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: user.email }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Erreur lors de la récupération du CV");
+        }
+
+        const data = await response.json();
+        
+        // On vérifie si on a reçu un objet (ou le premier élément d'un tableau)
+        const rawData = Array.isArray(data) ? data[0] : data;
+        
+        if (rawData && (rawData.email || rawData.personne?.contact?.email || rawData.data)) {
+          // On récupère le contenu niché dans 'data' s'il existe, sinon on prend l'objet racine
+          const content = rawData.data || rawData;
+
+          // Normalisation des données pour correspondre à l'interface CVData
+          const normalizedData: CVData = {
+            personne: {
+              prenom: rawData.prenom || content.prenom || content.personne?.prenom || "",
+              nom: rawData.nom || content.nom || content.personne?.nom || "",
+              titre_professionnel: content.titre_professionnel || content.personne?.titre_professionnel || "",
+              contact: {
+                email: rawData.email || content.email || content.personne?.contact?.email || "",
+                telephone: content.telephone || content.personne?.contact?.telephone || "",
+                linkedin: content.linkedin || content.personne?.contact?.linkedin || "",
+                ville: content.ville || content.personne?.contact?.ville || ""
+              }
+            },
+            resume: content.resume || "",
+            experiences: Array.isArray(content.experiences) ? content.experiences : [],
+            projets: Array.isArray(content.projets) ? content.projets : [],
+            formation: Array.isArray(content.formation) ? content.formation : [],
+            certifications: Array.isArray(content.certifications) ? content.certifications : [],
+            competences: {
+              soft_skills: Array.isArray(content.competences?.soft_skills) ? content.competences.soft_skills : [],
+              hard_skills: Array.isArray(content.competences?.hard_skills) ? content.competences.hard_skills : [],
+              langues: Array.isArray(content.competences?.langues) ? content.competences.langues : []
+            }
+          };
+          setCvData(normalizedData);
+        } else {
+          setCvData(null);
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setError("Impossible de charger votre CV. Veuillez réessayer plus tard.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchCV();
+    }
+  }, [user]);
+
+  const handleSave = async () => {
     if (!cvData) return;
 
     // Validation Email
     if (!cvData.personne.contact.email.trim()) {
-      alert("L'adresse email est obligatoire pour publier le CV.");
+      alert("L'adresse email est obligatoire pour enregistrer le CV.");
       return;
     }
 
-    setIsPublishing(true);
+    setIsSaving(true);
 
     try {
-      const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL || "https://souplike-marjorie-fierily.ngrok-free.dev/webhook/insert_cv";
+      const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL;
       
+      if (!insertUrl) {
+        throw new Error("La variable d'environnement NEXT_PUBLIC_INSERT_CV_URL n'est pas définie");
+      }
+
       const response = await fetch(insertUrl, {
         method: "POST",
         headers: {
@@ -128,7 +139,7 @@ export default function EditCVPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Erreur lors de la publication du CV");
+        throw new Error("Erreur lors de l'enregistrement du CV");
       }
 
       const result = await response.json();
@@ -138,29 +149,21 @@ export default function EditCVPage() {
         throw new Error("Le serveur n'a pas renvoyé de slug valide");
       }
 
-      alert("CV publié avec succès !");
-      localStorage.removeItem("pending-cv-data");
+      alert("CV enregistré avec succès !");
       
-      // Redirection vers la page du CV (/slug) renvoyé par le backend
+      // Redirection vers la page du CV (/cv/slug)
       router.push(`/cv/${slug}`);
     } catch (error) {
       console.error("Erreur:", error);
-      alert("Une erreur est survenue lors de la publication du CV.");
+      alert("Une erreur est survenue lors de l'enregistrement du CV.");
     } finally {
-      setIsPublishing(false);
+      setIsSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    if (confirm("Êtes-vous sûr de vouloir annuler ? Les modifications seront perdues.")) {
-      localStorage.removeItem("pending-cv-data");
-      router.push("/");
-    }
-  };
-
-  if (!cvData) return null;
-
+  // Helper functions for form updates (copied and adapted from EditCVPage)
   const updatePersonne = (field: string, value: string) => {
+    if (!cvData) return;
     setCvData({
       ...cvData,
       personne: { ...cvData.personne, [field]: value }
@@ -168,6 +171,7 @@ export default function EditCVPage() {
   };
 
   const updateContact = (field: string, value: string) => {
+    if (!cvData) return;
     setCvData({
       ...cvData,
       personne: {
@@ -178,6 +182,7 @@ export default function EditCVPage() {
   };
 
   const updateExperience = (index: number, field: keyof Experience, value: string | string[]) => {
+    if (!cvData) return;
     const newExperiences = [...cvData.experiences];
     if (field === 'details' && typeof value === 'string') {
       newExperiences[index] = { ...newExperiences[index], details: value.split('\n').filter(l => l.trim() !== "") };
@@ -188,6 +193,7 @@ export default function EditCVPage() {
   };
 
   const addExperience = () => {
+    if (!cvData) return;
     const newExp: Experience = {
       poste: "",
       entreprise: "",
@@ -201,12 +207,13 @@ export default function EditCVPage() {
   };
 
   const removeExperience = (index: number) => {
+    if (!cvData) return;
     const newExperiences = cvData.experiences.filter((_, i) => i !== index);
     setCvData({ ...cvData, experiences: newExperiences });
   };
 
   const addCompetenceCle = (expIndex: number, point: string) => {
-    if (!point.trim()) return;
+    if (!cvData || !point.trim()) return;
     const newExperiences = [...cvData.experiences];
     const currentPoints = newExperiences[expIndex].competences_cles || [];
     if (!currentPoints.includes(point.trim())) {
@@ -219,6 +226,7 @@ export default function EditCVPage() {
   };
 
   const removeCompetenceCle = (expIndex: number, pointIndex: number) => {
+    if (!cvData) return;
     const newExperiences = [...cvData.experiences];
     newExperiences[expIndex] = { 
       ...newExperiences[expIndex], 
@@ -228,12 +236,14 @@ export default function EditCVPage() {
   };
 
   const updateProjet = (index: number, field: keyof Projet, value: string) => {
+    if (!cvData) return;
     const newProjets = [...cvData.projets];
     newProjets[index] = { ...newProjets[index], [field]: value };
     setCvData({ ...cvData, projets: newProjets });
   };
 
   const addProjet = () => {
+    if (!cvData) return;
     const newProj: Projet = {
       nom: "",
       description: "",
@@ -244,17 +254,20 @@ export default function EditCVPage() {
   };
 
   const removeProjet = (index: number) => {
+    if (!cvData) return;
     const newProjets = cvData.projets.filter((_, i) => i !== index);
     setCvData({ ...cvData, projets: newProjets });
   };
 
   const updateCertification = (index: number, field: keyof Certification, value: string) => {
+    if (!cvData) return;
     const newCerts = [...cvData.certifications];
     newCerts[index] = { ...newCerts[index], [field]: value };
     setCvData({ ...cvData, certifications: newCerts });
   };
 
   const addCertification = () => {
+    if (!cvData) return;
     const newCert: Certification = {
       nom: "",
       score: "",
@@ -264,17 +277,20 @@ export default function EditCVPage() {
   };
 
   const removeCertification = (index: number) => {
+    if (!cvData) return;
     const newCerts = cvData.certifications.filter((_, i) => i !== index);
     setCvData({ ...cvData, certifications: newCerts });
   };
 
   const updateFormation = (index: number, field: keyof Formation, value: string) => {
+    if (!cvData) return;
     const newFormation = [...cvData.formation];
     newFormation[index] = { ...newFormation[index], [field]: value };
     setCvData({ ...cvData, formation: newFormation });
   };
 
   const addFormation = () => {
+    if (!cvData) return;
     const newForm: Formation = {
       diplome: "",
       etablissement: "",
@@ -284,17 +300,71 @@ export default function EditCVPage() {
   };
 
   const removeFormation = (index: number) => {
+    if (!cvData) return;
     const newFormation = cvData.formation.filter((_, i) => i !== index);
     setCvData({ ...cvData, formation: newFormation });
   };
 
   const updateSkills = (category: 'soft_skills' | 'hard_skills' | 'langues', value: string) => {
+    if (!cvData) return;
     const skillsArray = value.split(',').map(s => s.trim()).filter(s => s !== "");
     setCvData({
       ...cvData,
       competences: { ...cvData.competences, [category]: skillsArray }
     });
   };
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+        <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mb-4" />
+        <p className="text-slate-600 font-medium">Chargement de votre CV...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-red-100 text-center max-w-md">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Oups !</h2>
+          <p className="text-slate-600 mb-6">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-semibold"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!cvData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-200 text-center max-w-lg">
+          <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <FilePlus className="w-10 h-10" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Prêt à créer votre premier CV ?</h2>
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            Il semble que vous n&apos;ayez pas encore de CV enregistré. 
+            Importez votre CV actuel pour commencer à le personnaliser !
+          </p>
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-100"
+          >
+            Créer mon premier CV
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -303,28 +373,21 @@ export default function EditCVPage() {
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Révision du CV</h1>
-            <p className="text-slate-500">Vérifiez et modifiez les informations extraites avant de publier.</p>
+            <h1 className="text-2xl font-bold text-slate-900">Mon CV</h1>
+            <p className="text-slate-500">Gérez et modifiez vos informations professionnelles.</p>
           </div>
           <div className="flex gap-3 w-full sm:w-auto">
             <button
-              onClick={handleCancel}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-all font-semibold"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg shadow-indigo-200"
             >
-              <X className="w-4 h-4" />
-              Annuler
-            </button>
-            <button
-              onClick={handlePublish}
-              disabled={isPublishing}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg shadow-indigo-200"
-            >
-              {isPublishing ? (
+              {isSaving ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              Publier
+              Enregistrer
             </button>
           </div>
         </div>
@@ -375,13 +438,13 @@ export default function EditCVPage() {
 
               <div className="space-y-4 pt-4">
                 <div className="flex items-center gap-3 text-slate-400">
-                  <Mail className={`w-4 h-4 ${!cvData.personne.contact.email ? 'text-red-500' : ''}`} />
+                  <Mail className="w-4 h-4" />
                   <input 
                     type="email" 
                     value={cvData.personne.contact.email}
                     onChange={(e) => updateContact('email', e.target.value)}
-                    placeholder="Email (Obligatoire)"
-                    className={`flex-1 bg-transparent border-b focus:border-indigo-500 outline-none py-1 text-black ${!cvData.personne.contact.email ? 'border-red-200 placeholder:text-red-300' : 'border-slate-100'}`}
+                    placeholder="Email"
+                    className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black"
                   />
                 </div>
                 <div className="flex items-center gap-3 text-slate-400">

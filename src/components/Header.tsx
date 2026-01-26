@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { Home } from "lucide-react";
+import { Home, FileText } from "lucide-react";
 import LoginButton from "./LoginButton";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Header() {
+  const { user } = useAuth();
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -29,6 +34,17 @@ export default function Header() {
               <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span>Home</span>
             </Link>
+
+            {user && (
+              <Link 
+                href="/mon-cv" 
+                className="flex items-center gap-2 text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
+              >
+                <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Mon CV</span>
+              </Link>
+            )}
+
             <LoginButton />
           </nav>
         </div>
