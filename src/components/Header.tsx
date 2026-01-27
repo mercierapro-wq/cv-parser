@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Home, FileText } from "lucide-react";
+import { Home, FileText, BarChart3 } from "lucide-react";
 import LoginButton from "./LoginButton";
 import { useAuth } from "@/context/AuthContext";
 
@@ -41,6 +41,14 @@ export default function Header() {
             >
               <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span>Mon CV</span>
+            </Link>
+
+            <Link 
+              href="/statistiques" 
+              className="flex items-center gap-2 text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
+            >
+              <BarChart3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span>Statistiques</span>
             </Link>
 
             <LoginButton />

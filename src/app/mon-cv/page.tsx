@@ -24,7 +24,8 @@ import {
   Lock,
   LogIn,
   Eye,
-  Edit3
+  Edit3,
+  BarChart3
 } from "lucide-react";
 import Link from "next/link";
 import CVDisplay from "@/components/CVDisplay";
