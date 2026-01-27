@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CVData } from "@/types/cv";
+import AnalyticsTracker from "@/components/AnalyticsTracker";
 import { 
   Mail, 
   Phone, 
@@ -63,6 +64,7 @@ export default async function CVProfilePage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <AnalyticsTracker cvOwnerEmail={cvData.personne.contact.email} />
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Header Card */}

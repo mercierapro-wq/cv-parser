@@ -33,12 +33,24 @@ export default function LoginButton() {
               src={user.photoURL} 
               alt={user.displayName || 'User'} 
               className="w-8 h-8 rounded-full border border-slate-200 object-cover"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                // Fallback si l'image échoue à charger
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).parentElement?.querySelector('.avatar-fallback')?.classList.remove('hidden');
+              }}
             />
-          ) : (
+          ) : null}
+          {(!user.photoURL || user.photoURL === "") && (
             <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center border border-indigo-200">
               <UserIcon className="w-4 h-4" />
             </div>
           )}
+          {/* Fallback caché qui s'affiche en cas d'erreur de chargement de l'img */}
+          <div className="avatar-fallback hidden w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center border border-indigo-200">
+            <UserIcon className="w-4 h-4" />
+          </div>
           <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
