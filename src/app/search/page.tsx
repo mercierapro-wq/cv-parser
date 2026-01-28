@@ -6,6 +6,7 @@ import { AlertCircle } from 'lucide-react';
 import ProfileCard from '@/components/ProfileCard';
 import SearchSkeleton from '@/components/SearchSkeleton';
 import { CVData } from '@/types/cv';
+import { useAuth } from '@/context/AuthContext';
 
 interface SearchResult {
   slug: string;
@@ -13,28 +14,36 @@ interface SearchResult {
 }
 
 function SearchResults() {
+  const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   const lastQueryRef = useRef<string | null>(null);
+  const lastViewerIdRef = useRef<string | null>(null);
   
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
-    if (query && query !== lastQueryRef.current) {
-      handleSearch(query);
+    if (authLoading) return;
+
+    const currentViewerId = user?.email || 'anonymous';
+
+    if (query && (query !== lastQueryRef.current || currentViewerId !== lastViewerIdRef.current)) {
+      handleSearch(query, currentViewerId);
     } else if (!query) {
       setResults([]);
       setHasSearched(false);
       lastQueryRef.current = null;
+      lastViewerIdRef.current = null;
     }
-  }, [query]);
+  }, [query, user, authLoading]);
 
-  const handleSearch = async (searchQuery: string) => {
+  const handleSearch = async (searchQuery: string, viewerId: string) => {
     if (!searchQuery.trim()) return;
     
     lastQueryRef.current = searchQuery;
+    lastViewerIdRef.current = viewerId;
     setIsLoading(true);
     setHasSearched(true);
     
@@ -45,7 +54,10 @@ function SearchResults() {
       const response = await fetch(searchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery }),
+        body: JSON.stringify({ 
+          query: searchQuery,
+          viewerId: viewerId
+        }),
       });
 
       if (!response.ok) throw new Error("Search failed");

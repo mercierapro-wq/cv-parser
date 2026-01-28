@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   AreaChart, 
   Area, 
@@ -41,7 +41,7 @@ import { fr } from 'date-fns/locale';
 
 interface AnalyticsData {
   ownerEmail: string;
-  type: 'view' | 'search_impression';
+  type: 'view' | 'keywords';
   viewerId: string;
   timestamp: string;
   keyword?: string;
@@ -58,11 +58,16 @@ export default function Statistics({ userEmail }: StatisticsProps) {
   const [data, setData] = useState<AnalyticsData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastFetchedEmailRef = useRef<string | null>(null);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
+      if (userEmail === lastFetchedEmailRef.current) return;
+      
       setIsLoading(true);
       setError(null);
+      lastFetchedEmailRef.current = userEmail;
+      
       try {
         const url = process.env.NEXT_PUBLIC_GET_ANALYTICS_URL;
         if (!url) throw new Error("URL d'analytics non configurée");
@@ -141,7 +146,7 @@ export default function Statistics({ userEmail }: StatisticsProps) {
       ).length;
 
       const searches = data.filter(item => 
-        item.type === 'search_impression' && 
+        item.type === 'keywords' && 
         (period === 'Année' ? isSameMonth(parseISO(item.timestamp), date) : isSameDay(parseISO(item.timestamp), date))
       ).length;
 
@@ -155,7 +160,7 @@ export default function Statistics({ userEmail }: StatisticsProps) {
 
   const stats = useMemo(() => {
     const views = filteredData.filter(item => item.type === 'view').length;
-    const searches = filteredData.filter(item => item.type === 'search_impression').length;
+    const searches = filteredData.filter(item => item.type === 'keywords').length;
     
     // Calcul de l'évolution (simplifié pour l'instant)
     const previousViews = 0; // À implémenter avec plus de données
