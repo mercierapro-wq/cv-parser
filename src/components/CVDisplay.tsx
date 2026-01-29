@@ -1,4 +1,5 @@
 import { CVData } from "@/types/cv";
+import AvailabilityBadge from "./AvailabilityBadge";
 import { 
   Mail, 
   Phone, 
@@ -23,13 +24,16 @@ export default function CVDisplay({ data }: CVDisplayProps) {
       <header className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-8 sm:p-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <div className="space-y-4">
-            <div className="space-y-1">
+            <div className="space-y-2">
               <h1 className="text-4xl sm:text-5xl font-serif font-bold text-slate-900 tracking-tight">
                 {data.personne.prenom} {data.personne.nom}
               </h1>
-              <p className="text-xl text-indigo-600 font-medium font-sans">
-                {data.personne.titre_professionnel}
-              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-xl text-indigo-600 font-medium font-sans">
+                  {data.personne.titre_professionnel}
+                </p>
+                <AvailabilityBadge status={data.availability} />
+              </div>
             </div>
             
             <div className="flex flex-wrap gap-y-3 gap-x-6 text-slate-500 text-sm">

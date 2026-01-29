@@ -25,10 +25,14 @@ import {
   LogIn,
   Eye,
   Edit3,
-  BarChart3
+  BarChart3,
+  Share2
 } from "lucide-react";
 import Link from "next/link";
 import CVDisplay from "@/components/CVDisplay";
+import VisibilityToggle from "@/components/VisibilityToggle";
+import AvailabilitySelector from "@/components/AvailabilitySelector";
+import ShareModal from "@/components/ShareModal";
 
 export default function MonCVPage() {
   const router = useRouter();
@@ -36,6 +40,7 @@ export default function MonCVPage() {
   const [cvData, setCvData] = useState<CVData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -113,7 +118,10 @@ export default function MonCVPage() {
               soft_skills: Array.isArray(content.competences?.soft_skills) ? content.competences.soft_skills : [],
               hard_skills: Array.isArray(content.competences?.hard_skills) ? content.competences.hard_skills : [],
               langues: Array.isArray(content.competences?.langues) ? content.competences.langues : []
-            }
+            },
+            visible: content.visible ?? true, // Default to true if not specified
+            availability: content.availability || 'immediate',
+            slug: rawData.slug || content.slug || ""
           };
           setCvData(normalizedData);
         } else {
@@ -463,6 +471,16 @@ export default function MonCVPage() {
           </div>
           
           <div className="flex items-center gap-4 w-full sm:w-auto">
+            {/* Share Button */}
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all font-bold shadow-sm"
+              title="Partager mon CV"
+            >
+              <Share2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Partager</span>
+            </button>
+
             {/* Toggle View */}
             <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
               <button
@@ -515,6 +533,19 @@ export default function MonCVPage() {
           
           {/* Left Column - Personal Info, Certifications & Skills */}
           <div className="space-y-8">
+            {/* Visibility Settings */}
+            <VisibilityToggle 
+              initialVisible={cvData.visible ?? true} 
+              email={cvData.personne.contact.email}
+              onUpdate={(visible) => setCvData(prev => prev ? { ...prev, visible } : null)}
+            />
+
+            <AvailabilitySelector 
+              initialStatus={cvData.availability}
+              email={cvData.personne.contact.email}
+              onUpdate={(availability) => setCvData(prev => prev ? { ...prev, availability } : null)}
+            />
+
             {/* Personne & Contact */}
             <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
               <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
@@ -975,6 +1006,16 @@ export default function MonCVPage() {
             </section>
           </div>
         </div>
+        )}
+
+        {/* Share Modal */}
+        {cvData && (
+          <ShareModal 
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            slug={cvData.slug || ""}
+            isVisible={cvData.visible ?? true}
+          />
         )}
       </div>
     </div>

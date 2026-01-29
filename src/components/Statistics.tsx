@@ -167,7 +167,7 @@ export default function Statistics({ userEmail }: StatisticsProps) {
     const evolution = views > 0 ? 100 : 0;
 
     const keywords = filteredData
-      .filter(item => item.keyword)
+      .filter(item => item.type === 'keywords' && item.keyword && item.keyword !== 'undefined')
       .reduce((acc: Record<string, number>, item) => {
         const k = item.keyword!;
         acc[k] = (acc[k] || 0) + 1;

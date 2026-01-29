@@ -63,7 +63,18 @@ function SearchResults() {
       if (!response.ok) throw new Error("Search failed");
 
       const data = await response.json();
-      setResults(Array.isArray(data) ? data : []);
+      const normalizedResults = (Array.isArray(data) ? data : []).map((result: any) => {
+        const cvData = result.data as CVData;
+        // On s'assure que availability est présent s'il est à la racine du résultat
+        if (result.availability && !cvData.availability) {
+          cvData.availability = result.availability;
+        }
+        return {
+          ...result,
+          data: cvData
+        };
+      });
+      setResults(normalizedResults);
     } catch (error) {
       console.error("Search error:", error);
       setResults([]);

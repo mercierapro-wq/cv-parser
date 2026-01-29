@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { User } from 'lucide-react';
 import { CVData } from '@/types/cv';
+import AvailabilityBadge from './AvailabilityBadge';
 
 interface ProfileCardProps {
   slug: string;
@@ -23,10 +24,13 @@ export default function ProfileCard({ slug, data }: ProfileCardProps) {
           <div className="w-16 h-16 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 border border-slate-100 shrink-0 group-hover:bg-indigo-50 group-hover:text-indigo-200 transition-colors">
             <User className="w-10 h-10" />
           </div>
-          <div className="min-w-0">
-            <h3 className="text-xl font-bold text-slate-900 truncate">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xl font-bold text-slate-900 truncate mb-1">
               {personne.prenom} {personne.nom}
             </h3>
+            <div className="mb-2">
+              <AvailabilityBadge status={data.availability} size="sm" />
+            </div>
             <p className="text-indigo-600 font-semibold text-base truncate">
               {personne.titre_professionnel}
             </p>

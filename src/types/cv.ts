@@ -47,6 +47,8 @@ export interface Competences {
   langues: string[];
 }
 
+export type AvailabilityStatus = 'immediate' | '1_month' | '3_months' | 'unavailable';
+
 export interface CVData {
   personne: Personne;
   resume: string;
@@ -55,4 +57,7 @@ export interface CVData {
   formation: Formation[];
   competences: Competences;
   certifications: Certification[];
+  visible?: boolean;
+  availability?: AvailabilityStatus;
+  slug?: string;
 }

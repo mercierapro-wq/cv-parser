@@ -64,7 +64,7 @@ export default function Header() {
               className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
             >
               <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline">Home</span>
+              <span className="hidden sm:inline">Accueil</span>
             </Link>
             <Link 
               href="/mon-cv" 
@@ -78,7 +78,7 @@ export default function Header() {
               className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
             >
               <BarChart3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline">Stats</span>
+              <span className="hidden sm:inline">Statistiques</span>
             </Link>
             <LoginButton />
           </nav>
