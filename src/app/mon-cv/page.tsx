@@ -26,7 +26,9 @@ import {
   Eye,
   Edit3,
   BarChart3,
-  Share2
+  Share2,
+  Sparkles,
+  RotateCcw
 } from "lucide-react";
 import Link from "next/link";
 import CVDisplay from "@/components/CVDisplay";
@@ -41,6 +43,9 @@ export default function MonCVPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [optimizingIndex, setOptimizingIndex] = useState<number | null>(null);
+  const [originalDescriptions, setOriginalDescriptions] = useState<Record<number, string[]>>({});
+  const [shimmerIndex, setShimmerIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -201,6 +206,77 @@ export default function MonCVPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleOptimizeDescription = async (index: number) => {
+    if (!cvData || optimizingIndex !== null) return;
+
+    const exp = cvData.experiences[index];
+    const currentDescription = exp.details.join('\n');
+    
+    setOptimizingIndex(index);
+    setNotification(null);
+
+    try {
+      const optimizeUrl = process.env.NEXT_PUBLIC_OPTIMIZE_DESC_URL;
+      if (!optimizeUrl) throw new Error("URL d'optimisation non configurée");
+
+      const response = await fetch(optimizeUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: currentDescription,
+          jobTitle: exp.poste,
+          companyName: exp.entreprise,
+          resume: cvData.resume,
+          job_skills: exp.competences_cles
+        }),
+      });
+
+      if (!response.ok) throw new Error("Erreur lors de l'optimisation");
+
+      const result = await response.json();
+      const optimizedText = result.description || result.optimizedDescription || result.text || result[0]?.description || result[0]?.optimizedDescription;
+
+      if (!optimizedText) throw new Error("Réponse invalide de l'IA");
+
+      // Store original for undo
+      setOriginalDescriptions(prev => ({ ...prev, [index]: exp.details }));
+
+      // Update experience
+      const newExperiences = [...cvData.experiences];
+      newExperiences[index] = { 
+        ...newExperiences[index], 
+        details: optimizedText.split('\n').filter((l: string) => l.trim() !== "") 
+      };
+      setCvData({ ...cvData, experiences: newExperiences });
+
+      // Trigger shimmer effect
+      setShimmerIndex(index);
+      setTimeout(() => setShimmerIndex(null), 2000);
+
+      setNotification({ message: "Description optimisée avec succès !", type: 'success' });
+    } catch (error) {
+      console.error("Optimization error:", error);
+      setNotification({ message: "Impossible d'optimiser la description.", type: 'error' });
+    } finally {
+      setOptimizingIndex(null);
+    }
+  };
+
+  const handleUndoOptimization = (index: number) => {
+    if (!cvData || !originalDescriptions[index]) return;
+
+    const newExperiences = [...cvData.experiences];
+    newExperiences[index] = { ...newExperiences[index], details: originalDescriptions[index] };
+    setCvData({ ...cvData, experiences: newExperiences });
+
+    // Remove from original descriptions
+    const newOriginals = { ...originalDescriptions };
+    delete newOriginals[index];
+    setOriginalDescriptions(newOriginals);
+
+    setNotification({ message: "Modifications annulées", type: 'success' });
   };
 
   // Helper functions for form updates (copied and adapted from EditCVPage)
@@ -820,13 +896,47 @@ export default function MonCVPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2 mb-4">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description (Détails)</label>
+                    <div className="space-y-2 mb-4 relative">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description (Détails)</label>
+                        <div className="flex items-center gap-2">
+                          {originalDescriptions[index] && (
+                            <button
+                              onClick={() => handleUndoOptimization(index)}
+                              className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+                              title="Annuler l'optimisation"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Annuler
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleOptimizeDescription(index)}
+                            disabled={optimizingIndex !== null}
+                            className={`group relative flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                              optimizingIndex === index
+                                ? "bg-indigo-50 text-indigo-400 cursor-not-allowed"
+                                : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 active:scale-95"
+                            }`}
+                            title="Améliorer cette description avec l'IA"
+                          >
+                            {optimizingIndex === index ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Sparkles className={`w-3 h-3 ${optimizingIndex === null ? "group-hover:animate-pulse" : ""}`} />
+                            )}
+                            {optimizingIndex === index ? "Optimisation..." : "Optimiser par IA"}
+                          </button>
+                        </div>
+                      </div>
                       <textarea 
                         value={exp.details.join('\n')}
                         onChange={(e) => updateExperience(index, 'details', e.target.value)}
+                        disabled={optimizingIndex === index}
                         placeholder="Un élément par ligne"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px] text-black"
+                        className={`w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px] text-black transition-all ${
+                          shimmerIndex === index ? "animate-shimmer ring-2 ring-indigo-400 border-indigo-400" : ""
+                        } ${optimizingIndex === index ? "opacity-50" : ""}`}
                       />
                     </div>
 
