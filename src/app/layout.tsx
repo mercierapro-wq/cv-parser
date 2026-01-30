@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
@@ -40,7 +41,7 @@ export default function RootLayout({
         className={`${inter.variable} ${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-white`}
       >
         <AuthProvider>
-          <Suspense fallback={null}>
+          <Suspense fallback={<div className="h-16 bg-white border-b border-slate-200" />}>
             <Header />
           </Suspense>
           <main className="min-h-screen">
