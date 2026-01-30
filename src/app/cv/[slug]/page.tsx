@@ -36,9 +36,12 @@ async function getCVData(slug: string): Promise<CVData | null> {
       const rawData = result[0];
       if (rawData.data) {
         const cvData = rawData.data as CVData;
-        // On s'assure que availability est présent s'il est à la racine
+        // On s'assure que availability et visible sont présents s'ils sont à la racine
         if (rawData.availability && !cvData.availability) {
           cvData.availability = rawData.availability;
+        }
+        if (rawData.visible !== undefined && cvData.visible === undefined) {
+          cvData.visible = rawData.visible;
         }
         return cvData;
       }

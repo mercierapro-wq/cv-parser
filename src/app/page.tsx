@@ -76,11 +76,11 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4 sm:p-8">
+    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4 md:p-8">
       {/* Notifications */}
       {notification && (
         <div 
-          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
             notification.type === 'success' 
               ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
               : 'bg-red-50 border-red-100 text-red-800'
@@ -95,60 +95,60 @@ export default function Home() {
               <X className="w-4 h-4" />
             )}
           </div>
-          <p className="font-bold text-sm">{notification.message}</p>
+          <p className="font-bold text-xs md:text-sm">{notification.message}</p>
           <button 
             onClick={() => setNotification(null)}
-            className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+            className="ml-2 md:ml-4 text-slate-400 hover:text-slate-600 transition-colors min-h-[44px] flex items-center"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      <div className="w-full max-w-4xl mx-auto text-center space-y-8">
+      <div className="w-full max-w-4xl mx-auto text-center space-y-6 md:space-y-8">
         
         {/* Header Section */}
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-sm font-medium mb-2">
-            <Sparkles className="w-4 h-4" />
+        <div className="space-y-3 md:space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs md:text-sm font-medium mb-1 md:mb-2">
+            <Sparkles className="w-3.5 h-3.5 md:w-4 h-4" />
             <span>IA Powered Resume Parser</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
             Transformez votre CV <br />
             <span className="text-indigo-600">en profil web moderne</span>
           </h1>
-          <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed px-2">
             Déposez votre CV au format PDF et laissez notre IA extraire vos compétences et expériences pour créer une page de profil professionnelle instantanément.
           </p>
         </div>
 
         {/* Upload Section */}
-        <div className="mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
+        <div className="mt-8 md:mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
           <FileUpload onFileSelect={handleFileSelect} isUploading={isUploading} />
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 text-left max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-4 text-blue-600">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-12 md:mt-16 text-left max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+          <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-100">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3 md:mb-4 text-blue-600">
               <ArrowRight className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Rapide & Automatique</h3>
-            <p className="text-sm text-slate-500">Analyse instantanée de votre document PDF grâce à la puissance de n8n.</p>
+            <h3 className="font-semibold text-slate-900 mb-1 md:mb-2 text-base md:text-lg">Rapide & Automatique</h3>
+            <p className="text-xs md:text-sm text-slate-500">Analyse instantanée de votre document PDF grâce à la puissance de n8n.</p>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-4 text-green-600">
+          <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-100">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-3 md:mb-4 text-green-600">
               <CheckCircle2 className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Format Structuré</h3>
-            <p className="text-sm text-slate-500">Extraction intelligente des compétences, expériences et informations clés.</p>
+            <h3 className="font-semibold text-slate-900 mb-1 md:mb-2 text-base md:text-lg">Format Structuré</h3>
+            <p className="text-xs md:text-sm text-slate-500">Extraction intelligente des compétences, expériences et informations clés.</p>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-4 text-purple-600">
+          <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-100">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-3 md:mb-4 text-purple-600">
               <Sparkles className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Design Moderne</h3>
-            <p className="text-sm text-slate-500">Génération automatique d&apos;une page de profil élégante et responsive.</p>
+            <h3 className="font-semibold text-slate-900 mb-1 md:mb-2 text-base md:text-lg">Design Moderne</h3>
+            <p className="text-xs md:text-sm text-slate-500">Génération automatique d&apos;une page de profil élégante et responsive.</p>
           </div>
         </div>
 

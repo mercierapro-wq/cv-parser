@@ -10,10 +10,12 @@ import LoginButton from "./LoginButton";
 export default function Header() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const desktopInputRef = useRef<HTMLInputElement>(null);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent, isMobile: boolean) => {
     e.preventDefault();
+    const inputRef = isMobile ? mobileInputRef : desktopInputRef;
     const value = inputRef.current?.value;
     if (value?.trim()) {
       router.push(`/search?q=${encodeURIComponent(value.trim())}`);
@@ -38,9 +40,9 @@ export default function Header() {
 
           {/* Search Bar - Persistent */}
           <div className="flex-1 max-w-md hidden md:block">
-            <form onSubmit={handleSearch} className="relative">
+            <form onSubmit={(e) => handleSearch(e, false)} className="relative">
               <input
-                ref={inputRef}
+                ref={desktopInputRef}
                 type="text"
                 key={searchParams.get("q") || "header-search"}
                 defaultValue={searchParams.get("q") || ""}
@@ -53,12 +55,6 @@ export default function Header() {
 
           {/* Navigation / Right side */}
           <nav className="flex items-center gap-4 sm:gap-6">
-            <Link 
-              href="/search" 
-              className="md:hidden p-2 text-slate-700 hover:text-indigo-600 transition-colors"
-            >
-              <Search className="w-5 h-5" />
-            </Link>
             <Link 
               href="/" 
               className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
@@ -82,6 +78,21 @@ export default function Header() {
             </Link>
             <LoginButton />
           </nav>
+        </div>
+
+        {/* Search Bar - Mobile Only (Visible under logo/nav) */}
+        <div className="md:hidden pb-4 px-0">
+          <form onSubmit={(e) => handleSearch(e, true)} className="relative w-full">
+            <input
+              ref={mobileInputRef}
+              type="text"
+              key={searchParams.get("q") || "header-search-mobile"}
+              defaultValue={searchParams.get("q") || ""}
+              placeholder="Rechercher un talent..."
+              className="w-full pl-12 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
+            />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+          </form>
         </div>
       </div>
     </header>

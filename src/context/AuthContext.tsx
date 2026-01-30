@@ -46,10 +46,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL;
           if (insertUrl) {
+            const { visible, availability, slug: currentSlug, ...cvContent } = cvData;
+            const payload = {
+              email: user.email,
+              nom: cvData.personne.nom,
+              prenom: cvData.personne.prenom,
+              slug: currentSlug,
+              visible: visible ?? true,
+              availability: availability || 'immediate',
+              data: cvContent
+            };
+
             await fetch(insertUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(cvData),
+              body: JSON.stringify(payload),
             });
             localStorage.removeItem("pending-cv-data");
             console.log("CV importé automatiquement après connexion");

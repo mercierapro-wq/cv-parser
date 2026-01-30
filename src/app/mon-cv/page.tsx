@@ -92,8 +92,8 @@ export default function MonCVPage() {
           // Normalisation des données pour correspondre à l'interface CVData
           const normalizedData: CVData = {
             personne: {
-              prenom: rawData.prenom || content.prenom || content.personne?.prenom || "",
-              nom: rawData.nom || content.nom || content.personne?.nom || "",
+              prenom: content.prenom || content.personne?.prenom || rawData.prenom || "",
+              nom: content.nom || content.personne?.nom || rawData.nom || "",
               titre_professionnel: content.titre_professionnel || content.personne?.titre_professionnel || "",
               contact: {
                 email: rawData.email || content.email || content.personne?.contact?.email || "",
@@ -112,8 +112,8 @@ export default function MonCVPage() {
               hard_skills: Array.isArray(content.competences?.hard_skills) ? content.competences.hard_skills : [],
               langues: Array.isArray(content.competences?.langues) ? content.competences.langues : []
             },
-            visible: content.visible ?? true, // Default to true if not specified
-            availability: content.availability || 'immediate',
+            visible: rawData.visible ?? content.visible ?? true,
+            availability: rawData.availability || content.availability || 'immediate',
             slug: rawData.slug || content.slug || ""
           };
           setCvData(normalizedData);
@@ -157,12 +157,23 @@ export default function MonCVPage() {
         throw new Error("La variable d'environnement NEXT_PUBLIC_INSERT_CV_URL n'est pas définie");
       }
 
+      const { visible, availability, slug: currentSlug, ...cvContent } = updatedData;
+      const payload = {
+        email: updatedData.personne.contact.email,
+        nom: updatedData.personne.nom,
+        prenom: updatedData.personne.prenom,
+        slug: currentSlug,
+        visible: visible ?? true,
+        availability: availability || 'immediate',
+        data: cvContent
+      };
+
       const response = await fetch(insertUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(updatedData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -418,10 +429,7 @@ export default function MonCVPage() {
           ) : (
             <CVEditor 
               initialData={cvData!} 
-              onSave={handleSave} 
-              isSaving={isSaving}
-              title="Mon CV"
-              description="Gérez et modifiez vos informations professionnelles."
+              onChange={setCvData}
             />
           )}
 

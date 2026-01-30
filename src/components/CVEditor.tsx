@@ -29,12 +29,14 @@ interface CVEditorProps {
   initialData: CVData;
   isGuest?: boolean;
   isReadOnly?: boolean;
+  onChange?: (data: CVData) => void;
 }
 
 export default function CVEditor({ 
   initialData, 
   isGuest = false, 
-  isReadOnly = false
+  isReadOnly = false,
+  onChange
 }: CVEditorProps) {
   const { user, login } = useAuth();
   const [cvData, setCvData] = useState<CVData>(initialData);
@@ -48,6 +50,13 @@ export default function CVEditor({
   useEffect(() => {
     setCvData(initialData);
   }, [initialData]);
+
+  // Notify parent of changes
+  useEffect(() => {
+    if (onChange) {
+      onChange(cvData);
+    }
+  }, [cvData, onChange]);
 
   const handleProtectedAction = (action: () => void) => {
     if (user) {

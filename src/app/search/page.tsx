@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import ProfileCard from '@/components/ProfileCard';
 import SearchSkeleton from '@/components/SearchSkeleton';
-import { CVData } from '@/types/cv';
+import { CVData, AvailabilityStatus } from '@/types/cv';
 import { useAuth } from '@/context/AuthContext';
 
 interface SearchResult {
@@ -60,14 +60,28 @@ function SearchResults() {
         }),
       });
 
-      if (!response.ok) throw new Error("Search failed");
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Search API Error:", response.status, errorText);
+        throw new Error(`Search failed: ${response.status} ${errorText}`);
+      }
 
       const data = await response.json();
-      const normalizedResults = (Array.isArray(data) ? data : []).map((result: SearchResult & { availability?: string }) => {
+      const normalizedResults = (Array.isArray(data) ? data : []).map((result: SearchResult & { availability?: AvailabilityStatus; visible?: boolean }) => {
         const cvData = result.data as CVData;
-        // On s'assure que availability est présent s'il est à la racine du résultat
+        // Assurer que competences et ses sous-propriétés sont toujours définis
+        cvData.competences = {
+          hard_skills: cvData.competences?.hard_skills || [],
+          soft_skills: cvData.competences?.soft_skills || [],
+          langues: cvData.competences?.langues || []
+        };
+
+        // On s'assure que availability et visible sont présents s'ils sont à la racine du résultat
         if (result.availability && !cvData.availability) {
           cvData.availability = result.availability;
+        }
+        if (result.visible !== undefined && cvData.visible === undefined) {
+          cvData.visible = result.visible;
         }
         return {
           ...result,
@@ -84,18 +98,17 @@ function SearchResults() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col lg:flex-row gap-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
         {/* Sidebar (Future Filters) */}
         <aside className="w-full lg:w-64 shrink-0">
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 h-fit sticky top-24">
-            <h3 className="font-bold text-slate-900 mb-4">Filtres</h3>
-            <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 md:p-6 h-fit sticky top-24">
+            <h3 className="font-bold text-slate-900 mb-2 md:mb-4">Filtres</h3>
+            <div className="space-y-3 md:space-y-4">
               <div className="h-4 bg-slate-50 rounded w-full animate-pulse" />
               <div className="h-4 bg-slate-50 rounded w-3/4 animate-pulse" />
-              <div className="h-4 bg-slate-50 rounded w-5/6 animate-pulse" />
             </div>
-            <p className="text-xs text-slate-400 mt-6 italic">
+            <p className="text-[10px] md:text-xs text-slate-400 mt-4 md:mt-6 italic">
               Bientôt : Localisation, Expérience, Disponibilité
             </p>
           </div>
@@ -104,29 +117,29 @@ function SearchResults() {
         {/* Main Content */}
         <main className="flex-1">
           {isLoading ? (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <SearchSkeleton key={i} />
               ))}
             </div>
           ) : results.length > 0 ? (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {results.map((result) => (
                 <ProfileCard key={result.slug} slug={result.slug} data={result.data} />
               ))}
             </div>
           ) : hasSearched ? (
-            <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center max-w-2xl mx-auto">
-              <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <AlertCircle className="w-10 h-10 text-indigo-600" />
+            <div className="bg-white rounded-3xl border border-slate-100 p-8 md:p-12 text-center max-w-2xl mx-auto">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6">
+                <AlertCircle className="w-8 h-8 md:w-10 md:h-10 text-indigo-600" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Oups, aucun talent ne correspond à cette recherche.</h2>
-              <p className="text-slate-500">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-2">Oups, aucun talent ne correspond à cette recherche.</h2>
+              <p className="text-sm md:text-base text-slate-500">
                 Essayez avec un autre mot-clé ou une compétence différente !
               </p>
             </div>
           ) : (
-            <div className="text-center py-20">
+            <div className="text-center py-12 md:py-20">
               <p className="text-slate-400 font-medium">
                 Entrez un mot-clé pour commencer votre recherche.
               </p>

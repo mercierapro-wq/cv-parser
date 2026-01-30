@@ -95,7 +95,9 @@ export default function EditCVPage() {
           certifications: (Array.isArray(parsed.certifications) ? parsed.certifications : []).map((cert: Certification) => ({
             ...cert,
             date_obtention: formatParsedDate(cert.date_obtention)
-          }))
+          })),
+          visible: parsed.visible ?? true,
+          availability: parsed.availability || 'immediate'
         };
         
         setCvData(normalizedData);
@@ -107,6 +109,12 @@ export default function EditCVPage() {
       router.push("/");
     }
   }, [router]);
+
+  useEffect(() => {
+    if (cvData) {
+      localStorage.setItem("pending-cv-data", JSON.stringify(cvData));
+    }
+  }, [cvData]);
 
   const handlePublish = async (updatedData: CVData) => {
     if (!updatedData) return;
@@ -130,12 +138,23 @@ export default function EditCVPage() {
         throw new Error("La variable d'environnement NEXT_PUBLIC_INSERT_CV_URL n'est pas définie");
       }
 
+      const { visible, availability, slug: currentSlug, ...cvContent } = updatedData;
+      const payload = {
+        email: updatedData.personne.contact.email,
+        nom: updatedData.personne.nom,
+        prenom: updatedData.personne.prenom,
+        slug: currentSlug,
+        visible: visible ?? true,
+        availability: availability || 'immediate',
+        data: cvContent
+      };
+
       const response = await fetch(insertUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(updatedData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -270,6 +289,7 @@ export default function EditCVPage() {
           ) : (
             <CVEditor 
               initialData={cvData} 
+              onChange={setCvData}
               isGuest={true}
             />
           )}

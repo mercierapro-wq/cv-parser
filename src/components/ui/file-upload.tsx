@@ -98,7 +98,7 @@ export function FileUpload({ onFileSelect, isUploading = false }: FileUploadProp
                   e.stopPropagation();
                   removeFile();
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-full hover:bg-red-100 transition-colors"
+                className="flex items-center gap-1 px-4 py-2 min-h-[44px] text-xs font-medium text-red-600 bg-red-50 rounded-full hover:bg-red-100 transition-colors"
               >
                 <X className="w-3 h-3" />
                 Retirer
