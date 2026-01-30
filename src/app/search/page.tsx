@@ -63,7 +63,7 @@ function SearchResults() {
       if (!response.ok) throw new Error("Search failed");
 
       const data = await response.json();
-      const normalizedResults = (Array.isArray(data) ? data : []).map((result: any) => {
+      const normalizedResults = (Array.isArray(data) ? data : []).map((result: SearchResult & { availability?: string }) => {
         const cvData = result.data as CVData;
         // On s'assure que availability est présent s'il est à la racine du résultat
         if (result.availability && !cvData.availability) {

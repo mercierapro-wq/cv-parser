@@ -33,7 +33,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      // Auto-import CV from localStorage if it exists
+      const pendingData = localStorage.getItem("pending-cv-data");
+      if (pendingData && user.email) {
+        try {
+          const cvData = JSON.parse(pendingData);
+          // Ensure the email in the CV matches the logged-in user
+          cvData.personne.contact.email = user.email;
+
+          const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL;
+          if (insertUrl) {
+            await fetch(insertUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(cvData),
+            });
+            localStorage.removeItem("pending-cv-data");
+            console.log("CV importé automatiquement après connexion");
+          }
+        } catch (e) {
+          console.error("Erreur lors de l'import automatique du CV:", e);
+        }
+      }
     } catch (error) {
       console.error("Erreur lors de la connexion Google:", error);
     }

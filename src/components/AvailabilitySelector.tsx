@@ -9,9 +9,10 @@ interface AvailabilitySelectorProps {
   initialStatus?: AvailabilityStatus;
   email: string;
   onUpdate?: (status: AvailabilityStatus) => void;
+  variant?: 'default' | 'compact';
 }
 
-export default function AvailabilitySelector({ initialStatus, email, onUpdate }: AvailabilitySelectorProps) {
+export default function AvailabilitySelector({ initialStatus, email, onUpdate, variant = 'default' }: AvailabilitySelectorProps) {
   const [status, setStatus] = useState<AvailabilityStatus | undefined>(initialStatus);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -78,6 +79,53 @@ export default function AvailabilitySelector({ initialStatus, email, onUpdate }:
   };
 
   const currentConfig = status ? AVAILABILITY_CONFIG[status] : null;
+
+  if (variant === 'compact') {
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => !isLoading && setIsOpen(!isOpen)}
+          disabled={isLoading}
+          className={`h-10 flex items-center gap-2 px-3 rounded-xl transition-all text-left bg-slate-100 hover:bg-slate-200 focus:ring-2 focus:ring-indigo-500/20 outline-none ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          title="Changer ma disponibilité"
+        >
+          {currentConfig && (
+            <div className={`w-2 h-2 rounded-full shrink-0 ${currentConfig.dotColor} ${status === 'immediate' ? 'animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.4)]' : ''}`} />
+          )}
+          <span className="text-sm font-medium text-slate-700 whitespace-nowrap hidden sm:inline">
+            {currentConfig?.label || "Disponibilité"}
+          </span>
+          {isLoading ? (
+            <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />
+          ) : (
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          )}
+        </button>
+
+        {isOpen && (
+          <div className="absolute left-0 z-[120] w-48 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            {(Object.keys(AVAILABILITY_CONFIG) as AvailabilityStatus[]).map((key) => {
+              const config = AVAILABILITY_CONFIG[key];
+              const isSelected = status === key;
+              
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleStatusChange(key)}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-50 ${isSelected ? 'bg-indigo-50/50' : ''}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${config.dotColor} ${key === 'immediate' && isSelected ? 'animate-pulse' : ''}`} />
+                  <span className={`text-sm ${isSelected ? 'font-bold text-indigo-600' : 'text-slate-600'}`}>
+                    {config.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">

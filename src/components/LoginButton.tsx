@@ -95,10 +95,11 @@ export default function LoginButton() {
   return (
     <button
       onClick={login}
-      className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 rounded-xl text-sm font-bold"
+      className="h-10 flex items-center gap-2 px-4 sm:px-6 bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 rounded-xl text-sm font-bold"
+      title="Se connecter"
     >
       <LogIn className="w-4 h-4" />
-      Se connecter
+      <span className="hidden sm:inline">Se connecter</span>
     </button>
   );
 }

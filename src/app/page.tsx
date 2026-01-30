@@ -28,10 +28,10 @@ export default function Home() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
+      const webhookUrl = process.env.NEXT_PUBLIC_PARSE_CV_URL;
       
       if (!webhookUrl) {
-        throw new Error("L'URL du webhook n8n n'est pas configurée.");
+        throw new Error("L'URL d'analyse de CV n'est pas configurée.");
       }
 
       const response = await fetch(webhookUrl, {

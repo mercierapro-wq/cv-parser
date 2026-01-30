@@ -3,37 +3,25 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { CVData, Experience, Formation, Projet, Certification } from "@/types/cv";
+import { CVData } from "@/types/cv";
 import { 
-  Briefcase, 
-  User, 
-  GraduationCap, 
-  Wrench, 
   Save, 
-  Plus, 
-  Trash2,
-  Mail,
-  Phone,
-  Linkedin,
-  MapPin,
-  FolderKanban,
-  Award,
   X,
   Loader2,
-  FilePlus,
   Lock,
   LogIn,
   Eye,
   Edit3,
   Share2,
-  Sparkles,
-  RotateCcw
+  FilePlus,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import CVDisplay from "@/components/CVDisplay";
+import ShareModal from "@/components/ShareModal";
+import CVEditor from "@/components/CVEditor";
 import VisibilityToggle from "@/components/VisibilityToggle";
 import AvailabilitySelector from "@/components/AvailabilitySelector";
-import ShareModal from "@/components/ShareModal";
 import OptimizationAssistant from "@/components/OptimizationAssistant";
 
 export default function MonCVPage() {
@@ -44,12 +32,11 @@ export default function MonCVPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isOptimizationAssistantOpen, setIsOptimizationAssistantOpen] = useState(false);
-  const [optimizingIndex, setOptimizingIndex] = useState<number | null>(null);
-  const [originalDescriptions, setOriginalDescriptions] = useState<Record<number, string[]>>({});
-  const [shimmerIndex, setShimmerIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   // Auto-hide notification after 5 seconds
   useEffect(() => {
@@ -148,11 +135,11 @@ export default function MonCVPage() {
     }
   }, [user, authLoading]);
 
-  const handleSave = async () => {
-    if (!cvData) return;
+  const handleSave = async (updatedData: CVData) => {
+    if (!updatedData) return;
 
     // Validation Email
-    if (!cvData.personne.contact.email.trim()) {
+    if (!updatedData.personne.contact.email.trim()) {
       setNotification({ 
         message: "L'adresse email est obligatoire pour enregistrer le CV.", 
         type: 'error' 
@@ -175,7 +162,7 @@ export default function MonCVPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(cvData),
+        body: JSON.stringify(updatedData),
       });
 
       if (!response.ok) {
@@ -189,6 +176,7 @@ export default function MonCVPage() {
         throw new Error("Le serveur n'a pas renvoyé de slug valide");
       }
 
+      setCvData(updatedData);
       setNotification({ 
         message: "CV enregistré avec succès !", 
         type: 'success' 
@@ -209,228 +197,13 @@ export default function MonCVPage() {
     }
   };
 
-  const handleOptimizeDescription = async (index: number) => {
-    if (!cvData || optimizingIndex !== null) return;
-
-    const exp = cvData.experiences[index];
-    const currentDescription = exp.details.join('\n');
-    
-    setOptimizingIndex(index);
-    setNotification(null);
-
-    try {
-      const optimizeUrl = process.env.NEXT_PUBLIC_OPTIMIZE_DESC_URL;
-      if (!optimizeUrl) throw new Error("URL d'optimisation non configurée");
-
-      const response = await fetch(optimizeUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: currentDescription,
-          jobTitle: exp.poste,
-          companyName: exp.entreprise,
-          resume: cvData.resume,
-          job_skills: exp.competences_cles
-        }),
-      });
-
-      if (!response.ok) throw new Error("Erreur lors de l'optimisation");
-
-      const result = await response.json();
-      const optimizedText = result.description || result.optimizedDescription || result.text || result[0]?.description || result[0]?.optimizedDescription;
-
-      if (!optimizedText) throw new Error("Réponse invalide de l'IA");
-
-      // Store original for undo
-      setOriginalDescriptions(prev => ({ ...prev, [index]: exp.details }));
-
-      // Update experience
-      const newExperiences = [...cvData.experiences];
-      newExperiences[index] = { 
-        ...newExperiences[index], 
-        details: optimizedText.split('\n').filter((l: string) => l.trim() !== "") 
-      };
-      setCvData({ ...cvData, experiences: newExperiences });
-
-      // Trigger shimmer effect
-      setShimmerIndex(index);
-      setTimeout(() => setShimmerIndex(null), 2000);
-
-      setNotification({ message: "Description optimisée avec succès !", type: 'success' });
-    } catch (error) {
-      console.error("Optimization error:", error);
-      setNotification({ message: "Impossible d'optimiser la description.", type: 'error' });
-    } finally {
-      setOptimizingIndex(null);
-    }
-  };
-
-  const handleUndoOptimization = (index: number) => {
-    if (!cvData || !originalDescriptions[index]) return;
-
-    const newExperiences = [...cvData.experiences];
-    newExperiences[index] = { ...newExperiences[index], details: originalDescriptions[index] };
-    setCvData({ ...cvData, experiences: newExperiences });
-
-    // Remove from original descriptions
-    const newOriginals = { ...originalDescriptions };
-    delete newOriginals[index];
-    setOriginalDescriptions(newOriginals);
-
-    setNotification({ message: "Modifications annulées", type: 'success' });
-  };
-
-  // Helper functions for form updates (copied and adapted from EditCVPage)
-  const updatePersonne = (field: string, value: string) => {
-    if (!cvData) return;
-    setCvData({
-      ...cvData,
-      personne: { ...cvData.personne, [field]: value }
-    });
-  };
-
-  const updateContact = (field: string, value: string) => {
-    if (!cvData) return;
-    setCvData({
-      ...cvData,
-      personne: {
-        ...cvData.personne,
-        contact: { ...cvData.personne.contact, [field]: value }
-      }
-    });
-  };
-
-  const updateExperience = (index: number, field: keyof Experience, value: string | string[]) => {
-    if (!cvData) return;
-    const newExperiences = [...cvData.experiences];
-    if (field === 'details' && typeof value === 'string') {
-      newExperiences[index] = { ...newExperiences[index], details: value.split('\n').filter(l => l.trim() !== "") };
+  const handleProtectedAction = (action: () => void) => {
+    if (user) {
+      action();
     } else {
-      newExperiences[index] = { ...newExperiences[index], [field]: value } as Experience;
+      setPendingAction(() => action);
+      setShowAuthModal(true);
     }
-    setCvData({ ...cvData, experiences: newExperiences });
-  };
-
-  const addExperience = () => {
-    if (!cvData) return;
-    const newExp: Experience = {
-      poste: "",
-      entreprise: "",
-      periode_debut: "",
-      periode_fin: "",
-      description: "",
-      competences_cles: [],
-      details: []
-    };
-    setCvData({ ...cvData, experiences: [newExp, ...cvData.experiences] });
-  };
-
-  const removeExperience = (index: number) => {
-    if (!cvData) return;
-    const newExperiences = cvData.experiences.filter((_, i) => i !== index);
-    setCvData({ ...cvData, experiences: newExperiences });
-  };
-
-  const addCompetenceCle = (expIndex: number, point: string) => {
-    if (!cvData || !point.trim()) return;
-    const newExperiences = [...cvData.experiences];
-    const currentPoints = newExperiences[expIndex].competences_cles || [];
-    if (!currentPoints.includes(point.trim())) {
-      newExperiences[expIndex] = { 
-        ...newExperiences[expIndex], 
-        competences_cles: [...currentPoints, point.trim()] 
-      };
-      setCvData({ ...cvData, experiences: newExperiences });
-    }
-  };
-
-  const removeCompetenceCle = (expIndex: number, pointIndex: number) => {
-    if (!cvData) return;
-    const newExperiences = [...cvData.experiences];
-    newExperiences[expIndex] = { 
-      ...newExperiences[expIndex], 
-      competences_cles: newExperiences[expIndex].competences_cles.filter((_, i) => i !== pointIndex)
-    };
-    setCvData({ ...cvData, experiences: newExperiences });
-  };
-
-  const updateProjet = (index: number, field: keyof Projet, value: string) => {
-    if (!cvData) return;
-    const newProjets = [...cvData.projets];
-    newProjets[index] = { ...newProjets[index], [field]: value };
-    setCvData({ ...cvData, projets: newProjets });
-  };
-
-  const addProjet = () => {
-    if (!cvData) return;
-    const newProj: Projet = {
-      nom: "",
-      description: "",
-      periode_debut: "",
-      periode_fin: ""
-    };
-    setCvData({ ...cvData, projets: [newProj, ...cvData.projets] });
-  };
-
-  const removeProjet = (index: number) => {
-    if (!cvData) return;
-    const newProjets = cvData.projets.filter((_, i) => i !== index);
-    setCvData({ ...cvData, projets: newProjets });
-  };
-
-  const updateCertification = (index: number, field: keyof Certification, value: string) => {
-    if (!cvData) return;
-    const newCerts = [...cvData.certifications];
-    newCerts[index] = { ...newCerts[index], [field]: value };
-    setCvData({ ...cvData, certifications: newCerts });
-  };
-
-  const addCertification = () => {
-    if (!cvData) return;
-    const newCert: Certification = {
-      nom: "",
-      score: "",
-      date_obtention: ""
-    };
-    setCvData({ ...cvData, certifications: [newCert, ...cvData.certifications] });
-  };
-
-  const removeCertification = (index: number) => {
-    if (!cvData) return;
-    const newCerts = cvData.certifications.filter((_, i) => i !== index);
-    setCvData({ ...cvData, certifications: newCerts });
-  };
-
-  const updateFormation = (index: number, field: keyof Formation, value: string) => {
-    if (!cvData) return;
-    const newFormation = [...cvData.formation];
-    newFormation[index] = { ...newFormation[index], [field]: value };
-    setCvData({ ...cvData, formation: newFormation });
-  };
-
-  const addFormation = () => {
-    if (!cvData) return;
-    const newForm: Formation = {
-      diplome: "",
-      etablissement: "",
-      annee: ""
-    };
-    setCvData({ ...cvData, formation: [newForm, ...cvData.formation] });
-  };
-
-  const removeFormation = (index: number) => {
-    if (!cvData) return;
-    const newFormation = cvData.formation.filter((_, i) => i !== index);
-    setCvData({ ...cvData, formation: newFormation });
-  };
-
-  const updateSkills = (category: 'soft_skills' | 'hard_skills' | 'langues', value: string) => {
-    if (!cvData) return;
-    const skillsArray = value.split(',').map(s => s.trim()).filter(s => s !== "");
-    setCvData({
-      ...cvData,
-      competences: { ...cvData.competences, [category]: skillsArray }
-    });
   };
 
   if (authLoading || isLoading) {
@@ -509,651 +282,215 @@ export default function MonCVPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-8">
-        
-        {/* Notifications */}
-        {notification && (
-          <div 
-            className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
-              notification.type === 'success' 
-                ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
-                : 'bg-red-50 border-red-100 text-red-800'
-            }`}
-          >
-            <div className={`p-1.5 rounded-full ${
-              notification.type === 'success' ? 'bg-emerald-200 text-emerald-700' : 'bg-red-200 text-red-700'
-            }`}>
-              {notification.type === 'success' ? (
-                <Save className="w-4 h-4" />
-              ) : (
-                <X className="w-4 h-4" />
-              )}
-            </div>
-            <p className="font-bold text-sm">{notification.message}</p>
-            <button 
-              onClick={() => setNotification(null)}
-              className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
+    <div className="min-h-screen bg-slate-50">
+      {/* Sticky Header Toolbar */}
+      <div className="sticky top-0 z-[100] w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4">
+          
+          {/* Zone Gauche : Statut & Visibilité (Secondary Actions) */}
+          <div className="flex items-center gap-2 flex-1">
+            {cvData && (
+              <>
+                <VisibilityToggle 
+                  variant="compact"
+                  initialVisible={cvData.visible ?? true} 
+                  email={cvData.personne.contact.email}
+                  onUpdate={(visible) => setCvData(prev => prev ? { ...prev, visible } : null)}
+                />
+                <AvailabilitySelector 
+                  variant="compact"
+                  initialStatus={cvData.availability}
+                  email={cvData.personne.contact.email}
+                  onUpdate={(availability) => setCvData(prev => prev ? { ...prev, availability } : null)}
+                />
+              </>
+            )}
+          </div>
+
+          {/* Zone Centrale : Mode d'Affichage (Segmented Switch) */}
+          <div className="flex bg-slate-100 p-1 rounded-xl h-10">
+            <button
+              onClick={() => setShowPreview(false)}
+              className={`flex items-center gap-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                !showPreview 
+                  ? "bg-white text-slate-900 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              <X className="w-4 h-4" />
+              <Edit3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Édition</span>
+            </button>
+            <button
+              onClick={() => setShowPreview(true)}
+              className={`flex items-center gap-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                showPreview 
+                  ? "bg-white text-slate-900 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Eye className="w-4 h-4" />
+              <span className="hidden sm:inline">Aperçu</span>
             </button>
           </div>
-        )}
 
-        {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold text-slate-900">Mon CV</h1>
-            <p className="text-slate-500">Gérez et modifiez vos informations professionnelles.</p>
-          </div>
-          
-          <div className="flex items-center gap-4 w-full sm:w-auto">
-              {/* AI Optimization Button */}
+          {/* Zone Droite : Actions Prioritaires */}
+          <div className="flex items-center justify-end gap-2 flex-1">
+            {/* AI Button */}
+            {!showPreview && (
               <button
-                onClick={() => setIsOptimizationAssistantOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all font-bold"
-                title="Reconstruire tout mon CV avec l&apos;IA"
+                onClick={() => handleProtectedAction(() => setIsOptimizationAssistantOpen(true))}
+                className="h-10 flex items-center gap-2 px-4 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-sm font-medium group relative"
+                title="Reconstruire tout mon CV avec l'IA"
               >
                 <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">Reconstruire avec l&apos;IA</span>
+                <span className="hidden md:inline">Reconstruire avec l&apos;IA</span>
+                {!user && (
+                  <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white flex items-center gap-0.5">
+                    PRO
+                  </div>
+                )}
               </button>
+            )}
+
+            {/* Save Button */}
+            {!showPreview && (
+              <button
+                onClick={() => cvData && handleSave(cvData)}
+                disabled={isSaving}
+                className="h-10 flex items-center justify-center gap-2 px-4 sm:px-6 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium shadow-sm"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">{isSaving ? "Enregistrement..." : "Enregistrer"}</span>
+              </button>
+            )}
 
             {/* Share Button */}
             <button
               onClick={() => setIsShareModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all font-bold shadow-sm"
+              className="h-10 w-10 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm shrink-0"
               title="Partager mon CV"
             >
               <Share2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Partager</span>
             </button>
+          </div>
+        </div>
+      </div>
 
-            {/* Toggle View */}
-            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button
-                onClick={() => setShowPreview(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                  !showPreview 
-                    ? "bg-white text-indigo-600 shadow-sm" 
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto space-y-8">
+          
+          {/* Notifications */}
+          {notification && (
+            <div 
+              className={`fixed top-20 right-4 z-[110] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
+                notification.type === 'success' 
+                  ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+                  : 'bg-red-50 border-red-100 text-red-800'
+              }`}
+            >
+              <div className={`p-1.5 rounded-full ${
+                notification.type === 'success' ? 'bg-emerald-200 text-emerald-700' : 'bg-red-200 text-red-700'
+              }`}>
+                {notification.type === 'success' ? (
+                  <Save className="w-4 h-4" />
+                ) : (
+                  <X className="w-4 h-4" />
+                )}
+              </div>
+              <p className="font-bold text-sm">{notification.message}</p>
+              <button 
+                onClick={() => setNotification(null)}
+                className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
               >
-                <Edit3 className="w-4 h-4" />
-                Édition
-              </button>
-              <button
-                onClick={() => setShowPreview(true)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                  showPreview 
-                    ? "bg-white text-indigo-600 shadow-sm" 
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <Eye className="w-4 h-4" />
-                Aperçu
+                <X className="w-4 h-4" />
               </button>
             </div>
+          )}
 
-            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg shadow-indigo-200"
-            >
-              {isSaving ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              Enregistrer
-            </button>
-          </div>
-        </div>
-
-        {showPreview ? (
-          <div className="animate-in fade-in duration-500">
-            <CVDisplay data={cvData} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
-          
-          {/* Left Column - Personal Info, Certifications & Skills */}
-          <div className="space-y-8">
-            {/* Visibility Settings */}
-            <VisibilityToggle 
-              initialVisible={cvData.visible ?? true} 
-              email={cvData.personne.contact.email}
-              onUpdate={(visible) => setCvData(prev => prev ? { ...prev, visible } : null)}
+          {showPreview ? (
+            <div className="animate-in fade-in duration-500">
+              <CVDisplay data={cvData} />
+            </div>
+          ) : (
+            <CVEditor 
+              initialData={cvData!} 
+              onSave={handleSave} 
+              isSaving={isSaving}
+              title="Mon CV"
+              description="Gérez et modifiez vos informations professionnelles."
             />
+          )}
 
-            <AvailabilitySelector 
-              initialStatus={cvData.availability}
-              email={cvData.personne.contact.email}
-              onUpdate={(availability) => setCvData(prev => prev ? { ...prev, availability } : null)}
+          {/* Share Modal */}
+          {cvData && (
+            <ShareModal 
+              isOpen={isShareModalOpen}
+              onClose={() => setIsShareModalOpen(false)}
+              slug={cvData.slug || ""}
+              isVisible={cvData.visible ?? true}
             />
+          )}
 
-            {/* Personne & Contact */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                  <User className="w-5 h-5" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900">Informations Personnelles</h2>
-              </div>
+          {/* Optimization Assistant Modal */}
+          {cvData && (
+            <OptimizationAssistant 
+              isOpen={isOptimizationAssistantOpen}
+              onClose={() => setIsOptimizationAssistantOpen(false)}
+              cvData={cvData}
+              onSuccess={(optimizedData) => {
+                setCvData(optimizedData);
+                setNotification({ message: "CV optimisé avec succès !", type: 'success' });
+              }}
+            />
+          )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Prénom</label>
-                  <input 
-                    type="text" 
-                    value={cvData.personne.prenom}
-                    onChange={(e) => updatePersonne('prenom', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-black"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nom</label>
-                  <input 
-                    type="text" 
-                    value={cvData.personne.nom}
-                    onChange={(e) => updatePersonne('nom', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-black"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Titre Professionnel</label>
-                <input 
-                  type="text" 
-                  value={cvData.personne.titre_professionnel}
-                  onChange={(e) => updatePersonne('titre_professionnel', e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-black"
-                />
-              </div>
-
-              <div className="space-y-4 pt-4">
-                <div className="flex items-center gap-3 text-slate-400">
-                  <Mail className="w-4 h-4" />
-                  <input 
-                    type="email" 
-                    value={cvData.personne.contact.email}
-                    onChange={(e) => updateContact('email', e.target.value)}
-                    placeholder="Email"
-                    className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black"
-                  />
-                </div>
-                <div className="flex items-center gap-3 text-slate-400">
-                  <Phone className="w-4 h-4" />
-                  <input 
-                    type="text" 
-                    value={cvData.personne.contact.telephone}
-                    onChange={(e) => updateContact('telephone', e.target.value)}
-                    placeholder="Téléphone"
-                    className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black"
-                  />
-                </div>
-                <div className="flex items-center gap-3 text-slate-400">
-                  <Linkedin className="w-4 h-4" />
-                  <input 
-                    type="text" 
-                    value={cvData.personne.contact.linkedin}
-                    onChange={(e) => updateContact('linkedin', e.target.value)}
-                    placeholder="LinkedIn URL"
-                    className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black"
-                  />
-                </div>
-                <div className="flex items-center gap-3 text-slate-400">
-                  <MapPin className="w-4 h-4" />
-                  <input 
-                    type="text" 
-                    value={cvData.personne.contact.ville}
-                    onChange={(e) => updateContact('ville', e.target.value)}
-                    placeholder="Ville, Pays"
-                    className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black"
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Certifications */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
-                    <Award className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-lg font-bold text-slate-900">Certifications</h2>
-                </div>
-                <button 
-                  onClick={addCertification}
-                  className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Ajouter
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {cvData.certifications?.map((cert, index) => (
-                  <div key={index} className="relative p-4 bg-slate-50 rounded-xl border border-slate-100 group space-y-3">
-                    <button 
-                      onClick={() => removeCertification(index)}
-                      className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nom</label>
-                      <input 
-                        type="text" 
-                        value={cert.nom}
-                        onChange={(e) => updateCertification(index, 'nom', e.target.value)}
-                        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score</label>
-                        <input 
-                          type="text" 
-                          value={cert.score}
-                          onChange={(e) => updateCertification(index, 'score', e.target.value)}
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</label>
-                        <input 
-                          type="text" 
-                          value={cert.date_obtention}
-                          onChange={(e) => updateCertification(index, 'date_obtention', e.target.value)}
-                          placeholder="AAAA"
-                          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Competences */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
-                  <Wrench className="w-5 h-5" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900">Compétences</h2>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hard Skills (séparés par des virgules)</label>
-                  <textarea 
-                    value={cvData.competences.hard_skills.join(', ')}
-                    onChange={(e) => updateSkills('hard_skills', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[80px] text-black"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Soft Skills (séparés par des virgules)</label>
-                  <textarea 
-                    value={cvData.competences.soft_skills.join(', ')}
-                    onChange={(e) => updateSkills('soft_skills', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[80px] text-black"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Langues (séparées par des virgules)</label>
-                  <input 
-                    type="text" 
-                    value={cvData.competences.langues.join(', ')}
-                    onChange={(e) => updateSkills('langues', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-black"
-                  />
-                </div>
-              </div>
-            </section>
-          </div>
-
-          {/* Right Column - Resume, Experience, Projects, Formation */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Resume */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
-                  <User className="w-5 h-5" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900">Résumé</h2>
-              </div>
-              <textarea 
-                value={cvData.resume}
-                onChange={(e) => setCvData({...cvData, resume: e.target.value})}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[120px] text-black leading-relaxed"
+          {/* Auth Modal */}
+          {showAuthModal && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
+              <div 
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
+                onClick={() => setShowAuthModal(false)}
               />
-            </section>
-
-            {/* Experience */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                    <Briefcase className="w-5 h-5" />
+              <div className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
+                <div className="p-8 sm:p-10 text-center">
+                  <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6">
+                    <Lock className="w-10 h-10" />
                   </div>
-                  <h2 className="text-lg font-bold text-slate-900">Expériences Professionnelles</h2>
-                </div>
-                <button 
-                  onClick={addExperience}
-                  className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Ajouter
-                </button>
-              </div>
-
-              <div className="space-y-8">
-                {cvData.experiences.map((exp, index) => (
-                  <div key={index} className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group">
+                  <h2 className="text-2xl font-bold text-slate-900 mb-3">Fonctionnalité Pro</h2>
+                  <p className="text-slate-600 mb-8 leading-relaxed">
+                    L&apos;optimisation par IA est réservée aux membres. Connectez-vous gratuitement pour booster votre CV !
+                  </p>
+                  <div className="flex flex-col gap-3">
                     <button 
-                      onClick={() => removeExperience(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      onClick={async () => {
+                        await login();
+                        setShowAuthModal(false);
+                        if (pendingAction) {
+                          pendingAction();
+                          setPendingAction(null);
+                        }
+                      }}
+                      className="flex items-center justify-center gap-2 w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <LogIn className="w-5 h-5" />
+                      Se connecter avec Google
                     </button>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Poste</label>
-                        <input 
-                          type="text" 
-                          value={exp.poste}
-                          onChange={(e) => updateExperience(index, 'poste', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Entreprise</label>
-                        <input 
-                          type="text" 
-                          value={exp.entreprise}
-                          onChange={(e) => updateExperience(index, 'entreprise', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Début</label>
-                        <input 
-                          type="text" 
-                          value={exp.periode_debut}
-                          onChange={(e) => updateExperience(index, 'periode_debut', e.target.value)}
-                          placeholder="MM/AAAA"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fin</label>
-                        <input 
-                          type="text" 
-                          value={exp.periode_fin}
-                          onChange={(e) => updateExperience(index, 'periode_fin', e.target.value)}
-                          placeholder="MM/AAAA"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 mb-4 relative">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description (Détails)</label>
-                        <div className="flex items-center gap-2">
-                          {originalDescriptions[index] && (
-                            <button
-                              onClick={() => handleUndoOptimization(index)}
-                              className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-indigo-600 transition-colors"
-                              title="Annuler l'optimisation"
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                              Annuler
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleOptimizeDescription(index)}
-                            disabled={optimizingIndex !== null}
-                            className={`group relative flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                              optimizingIndex === index
-                                ? "bg-indigo-50 text-indigo-400 cursor-not-allowed"
-                                : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 active:scale-95"
-                            }`}
-                            title="Améliorer cette description avec l'IA"
-                          >
-                            {optimizingIndex === index ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Sparkles className={`w-3 h-3 ${optimizingIndex === null ? "group-hover:animate-pulse" : ""}`} />
-                            )}
-                            {optimizingIndex === index ? "Optimisation..." : "Optimiser par IA"}
-                          </button>
-                        </div>
-                      </div>
-                      <textarea 
-                        value={exp.details.join('\n')}
-                        onChange={(e) => updateExperience(index, 'details', e.target.value)}
-                        disabled={optimizingIndex === index}
-                        placeholder="Un élément par ligne"
-                        className={`w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px] text-black transition-all ${
-                          shimmerIndex === index ? "animate-shimmer ring-2 ring-indigo-400 border-indigo-400" : ""
-                        } ${optimizingIndex === index ? "opacity-50" : ""}`}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Compétences clés</label>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {exp.competences_cles?.map((point, pIndex) => (
-                          <span 
-                            key={pIndex}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold border border-indigo-100"
-                          >
-                            {point}
-                            <button 
-                              onClick={() => removeCompetenceCle(index, pIndex)}
-                              className="hover:text-indigo-900"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text"
-                          placeholder="Ajouter une compétence clé..."
-                          className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-black"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              addCompetenceCle(index, (e.target as HTMLInputElement).value);
-                              (e.target as HTMLInputElement).value = '';
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Projects */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-cyan-100 rounded-lg text-cyan-600">
-                    <FolderKanban className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-lg font-bold text-slate-900">Projets</h2>
-                </div>
-                <button 
-                  onClick={addProjet}
-                  className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Ajouter
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {cvData.projets?.map((proj, index) => (
-                  <div key={index} className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group space-y-4">
                     <button 
-                      onClick={() => removeProjet(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      onClick={() => setShowAuthModal(false)}
+                      className="w-full py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      Plus tard
                     </button>
-                    
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nom du projet</label>
-                      <input 
-                        type="text" 
-                        value={proj.nom}
-                        onChange={(e) => updateProjet(index, 'nom', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Début</label>
-                        <input 
-                          type="text" 
-                          value={proj.periode_debut}
-                          onChange={(e) => updateProjet(index, 'periode_debut', e.target.value)}
-                          placeholder="MM/AAAA"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fin</label>
-                        <input 
-                          type="text" 
-                          value={proj.periode_fin}
-                          onChange={(e) => updateProjet(index, 'periode_fin', e.target.value)}
-                          placeholder="MM/AAAA"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
-                      <textarea 
-                        value={proj.description}
-                        onChange={(e) => updateProjet(index, 'description', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none min-h-[80px] text-black"
-                      />
-                    </div>
                   </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Formation */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-lg font-bold text-slate-900">Formation</h2>
                 </div>
-                <button 
-                  onClick={addFormation}
-                  className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Ajouter
-                </button>
               </div>
-
-              <div className="space-y-6">
-                {cvData.formation.map((form, index) => (
-                  <div key={index} className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group">
-                    <button 
-                      onClick={() => removeFormation(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="md:col-span-1 space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Diplôme</label>
-                        <input 
-                          type="text" 
-                          value={form.diplome}
-                          onChange={(e) => updateFormation(index, 'diplome', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                      <div className="md:col-span-1 space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Établissement</label>
-                        <input 
-                          type="text" 
-                          value={form.etablissement}
-                          onChange={(e) => updateFormation(index, 'etablissement', e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                      <div className="md:col-span-1 space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Année</label>
-                        <input 
-                          type="text" 
-                          value={form.annee}
-                          onChange={(e) => updateFormation(index, 'annee', e.target.value)}
-                          placeholder="AAAA"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
+            </div>
+          )}
         </div>
-        )}
-
-        {/* Share Modal */}
-        {cvData && (
-          <ShareModal 
-            isOpen={isShareModalOpen}
-            onClose={() => setIsShareModalOpen(false)}
-            slug={cvData.slug || ""}
-            isVisible={cvData.visible ?? true}
-          />
-        )}
-
-        {/* Optimization Assistant */}
-        {cvData && (
-          <OptimizationAssistant 
-            isOpen={isOptimizationAssistantOpen}
-            onClose={() => setIsOptimizationAssistantOpen(false)}
-            cvData={cvData}
-            onSuccess={(optimizedData) => {
-              setCvData(optimizedData);
-              setNotification({ 
-                message: "Votre CV a été entièrement optimisé par l'IA !", 
-                type: 'success' 
-              });
-            }}
-          />
-        )}
       </div>
     </div>
   );

@@ -78,7 +78,11 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
     setError(null);
 
     try {
-      const optimizeUrl = process.env.NEXT_PUBLIC_OPTIMIZE_CV_URL || `${process.env.NEXT_PUBLIC_ROOT_URL}/optimize_cv`;
+      const optimizeUrl = process.env.NEXT_PUBLIC_OPTIMIZE_CV_URL;
+      
+      if (!optimizeUrl) {
+        throw new Error("L'URL d'optimisation globale n'est pas configurée.");
+      }
       
       const response = await fetch(optimizeUrl, {
         method: "POST",
