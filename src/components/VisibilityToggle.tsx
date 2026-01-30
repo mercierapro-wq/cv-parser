@@ -77,7 +77,7 @@ export default function VisibilityToggle({ initialVisible, email, onUpdate }: Vi
       </div>
 
       <p className="text-sm text-slate-500 leading-relaxed">
-        Lorsqu'il est invisible, votre profil n'apparaîtra plus dans les résultats de recherche et ne sera plus accessible via votre lien public.
+        Lorsqu&apos;il est invisible, votre profil n&apos;apparaîtra plus dans les résultats de recherche et ne sera plus accessible via votre lien public.
       </p>
 
       <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">

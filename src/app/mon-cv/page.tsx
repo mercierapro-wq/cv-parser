@@ -25,7 +25,6 @@ import {
   LogIn,
   Eye,
   Edit3,
-  BarChart3,
   Share2,
   Sparkles,
   RotateCcw
@@ -35,6 +34,7 @@ import CVDisplay from "@/components/CVDisplay";
 import VisibilityToggle from "@/components/VisibilityToggle";
 import AvailabilitySelector from "@/components/AvailabilitySelector";
 import ShareModal from "@/components/ShareModal";
+import OptimizationAssistant from "@/components/OptimizationAssistant";
 
 export default function MonCVPage() {
   const router = useRouter();
@@ -43,6 +43,7 @@ export default function MonCVPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isOptimizationAssistantOpen, setIsOptimizationAssistantOpen] = useState(false);
   const [optimizingIndex, setOptimizingIndex] = useState<number | null>(null);
   const [originalDescriptions, setOriginalDescriptions] = useState<Record<number, string[]>>({});
   const [shimmerIndex, setShimmerIndex] = useState<number | null>(null);
@@ -547,6 +548,16 @@ export default function MonCVPage() {
           </div>
           
           <div className="flex items-center gap-4 w-full sm:w-auto">
+              {/* AI Optimization Button */}
+              <button
+                onClick={() => setIsOptimizationAssistantOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all font-bold"
+                title="Reconstruire tout mon CV avec l&apos;IA"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">Reconstruire avec l&apos;IA</span>
+              </button>
+
             {/* Share Button */}
             <button
               onClick={() => setIsShareModalOpen(true)}
@@ -1125,6 +1136,22 @@ export default function MonCVPage() {
             onClose={() => setIsShareModalOpen(false)}
             slug={cvData.slug || ""}
             isVisible={cvData.visible ?? true}
+          />
+        )}
+
+        {/* Optimization Assistant */}
+        {cvData && (
+          <OptimizationAssistant 
+            isOpen={isOptimizationAssistantOpen}
+            onClose={() => setIsOptimizationAssistantOpen(false)}
+            cvData={cvData}
+            onSuccess={(optimizedData) => {
+              setCvData(optimizedData);
+              setNotification({ 
+                message: "Votre CV a été entièrement optimisé par l'IA !", 
+                type: 'success' 
+              });
+            }}
           />
         )}
       </div>
