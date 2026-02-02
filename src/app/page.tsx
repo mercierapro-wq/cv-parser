@@ -89,7 +89,7 @@ export default function Home() {
       {/* Notifications */}
       {notification && (
         <div 
-          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
+          className={`fixed top-4 right-4 z-[999] flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
             notification.type === 'success' 
               ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
               : 'bg-red-50 border-red-100 text-red-800'
@@ -120,14 +120,14 @@ export default function Home() {
         <div className="space-y-3 md:space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs md:text-sm font-medium mb-1 md:mb-2">
             <Sparkles className="w-3.5 h-3.5 md:w-4 h-4" />
-            <span>Analyseur de CV basé sur l'IA</span>
+            <span>Analyseur de CV basé sur l&apos;IA</span>
           </div>
           <h1 className="text-2xl sm:text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
-            Plus qu'un CV <br />
+            Plus qu&apos;un CV <br />
             <span className="text-indigo-600">un profil intelligent et mesurable</span>
           </h1>
           <p className="text-base md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed px-2">
-            Convertissez votre CV en une page web standardisée et optimisée par l'IA. Améliorez la pertinence de vos expériences en un clic et suivez l'impact de vos candidatures grâce à vos statistiques de consultation en temps réel.
+            Convertissez votre CV en une page web standardisée et optimisée par l&apos;IA. Améliorez la pertinence de vos expériences en un clic et suivez l&apos;impact de vos candidatures grâce à vos statistiques de consultation en temps réel.
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export default function Home() {
             <h3 className="font-semibold text-slate-900 mb-1 md:mb-2 text-base md:text-lg">Rapide & Automatique</h3>
             <p className="text-xs md:text-sm text-slate-500">Analyse instantanée de votre document PDF.</p>
           </div>
-          <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-3 md:mb-4 text-green-600">
               <CheckCircle2 className="w-5 h-5" />
             </div>
@@ -157,7 +157,7 @@ export default function Home() {
               <Sparkles className="w-5 h-5" />
             </div>
             <h3 className="font-semibold text-slate-900 mb-1 md:mb-2 text-base md:text-lg">Assistant Candidat</h3>
-            <p className="text-xs md:text-sm text-slate-500">Faites vous aider par l'IA pour optimiser votre CV.</p>
+            <p className="text-xs md:text-sm text-slate-500">Faites vous aider par l&apos;IA pour optimiser votre CV.</p>
           </div>
         </div>
 

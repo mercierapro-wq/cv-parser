@@ -315,7 +315,7 @@ export default function EditCVPage() {
           {/* Notifications */}
           {notification && (
             <div 
-              className={`fixed top-20 right-4 z-[110] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
+              className={`fixed top-20 right-4 z-[999] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
                 notification.type === 'success' 
                   ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
                   : 'bg-red-50 border-red-100 text-red-800'
