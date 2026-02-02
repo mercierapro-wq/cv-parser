@@ -8,12 +8,9 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  LineChart,
-  Line
+  ResponsiveContainer
 } from 'recharts';
 import { 
-  Calendar, 
   TrendingUp, 
   TrendingDown, 
   Search, 
@@ -25,7 +22,6 @@ import {
 import { 
   format, 
   subDays, 
-  subWeeks, 
   subMonths, 
   subYears, 
   isAfter, 
@@ -33,7 +29,6 @@ import {
   eachDayOfInterval,
   isSameDay,
   parseISO,
-  startOfMonth,
   eachMonthOfInterval,
   isSameMonth
 } from 'date-fns';
@@ -83,11 +78,16 @@ export default function Statistics({ userEmail }: StatisticsProps) {
         const result = await response.json();
         
         // Gestion du cas aux limites : si un seul élément est renvoyé comme objet simple
+        let rawData: AnalyticsData[] = [];
         if (result && typeof result === 'object' && !Array.isArray(result)) {
-          setData([result as AnalyticsData]);
+          rawData = [result];
         } else {
-          setData(Array.isArray(result) ? result : []);
+          rawData = Array.isArray(result) ? result : [];
         }
+
+        // Filtrer les objets vides ou invalides (ex: [{}])
+        const validData = rawData.filter(item => item && item.timestamp && item.type);
+        setData(validData);
       } catch (err) {
         console.error('Error fetching analytics:', err);
         setError('Impossible de charger les statistiques.');
@@ -107,13 +107,13 @@ export default function Statistics({ userEmail }: StatisticsProps) {
 
     switch (period) {
       case 'Jour': startDate = startOfDay(now); break;
-      case 'Semaine': startDate = subWeeks(now, 1); break;
-      case 'Mois': startDate = subMonths(now, 1); break;
-      case 'Année': startDate = subYears(now, 1); break;
-      default: startDate = subWeeks(now, 1);
+      case 'Semaine': startDate = startOfDay(subDays(now, 6)); break;
+      case 'Mois': startDate = startOfDay(subMonths(now, 1)); break;
+      case 'Année': startDate = startOfDay(subYears(now, 1)); break;
+      default: startDate = startOfDay(subDays(now, 6));
     }
 
-    return data.filter(item => isAfter(parseISO(item.timestamp), startDate));
+    return data.filter(item => isAfter(parseISO(item.timestamp), startDate) || isSameDay(parseISO(item.timestamp), startDate));
   }, [data, period]);
 
   const chartData = useMemo(() => {
@@ -163,20 +163,21 @@ export default function Statistics({ userEmail }: StatisticsProps) {
     const searches = filteredData.filter(item => item.type === 'keywords').length;
     
     // Calcul de l'évolution (simplifié pour l'instant)
-    const previousViews = 0; // À implémenter avec plus de données
     const evolution = views > 0 ? 100 : 0;
 
     const keywords = filteredData
-      .filter(item => item.type === 'keywords' && item.keyword && item.keyword !== 'undefined')
+      .filter(item => item.type === 'keywords' && item.keyword && String(item.keyword).toLowerCase() !== 'undefined')
       .reduce((acc: Record<string, number>, item) => {
-        const k = item.keyword!;
-        acc[k] = (acc[k] || 0) + 1;
+        const k = String(item.keyword).trim().toLowerCase();
+        if (k) {
+          acc[k] = (acc[k] || 0) + 1;
+        }
         return acc;
       }, {});
 
     const topKeywords = Object.entries(keywords)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
+      .slice(0, 10)
       .map(([word]) => word);
 
     return { views, searches, evolution, topKeywords };
@@ -197,20 +198,6 @@ export default function Statistics({ userEmail }: StatisticsProps) {
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
         <h3 className="text-lg font-bold text-red-900 mb-2">Erreur</h3>
         <p className="text-red-700">{error}</p>
-      </div>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-sm">
-        <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <TrendingUp className="w-10 h-10" />
-        </div>
-        <h3 className="text-2xl font-bold text-slate-900 mb-3">Votre CV commence son aventure</h3>
-        <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
-          Les statistiques arrivent bientôt ! Dès que votre CV sera consulté ou apparaîtra dans les recherches, vous verrez l&apos;évolution ici.
-        </p>
       </div>
     );
   }

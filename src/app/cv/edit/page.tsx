@@ -2,23 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { CVData, Experience, Formation, Projet, Certification } from "@/types/cv";
 import { 
   Save, 
   X,
   Loader2,
   Edit3,
-  Eye
+  Eye,
+  Share2,
+  Sparkles,
+  Lock,
+  LogIn
 } from "lucide-react";
 import CVEditor from "@/components/CVEditor";
 import CVDisplay from "@/components/CVDisplay";
+import VisibilityToggle from "@/components/VisibilityToggle";
+import AvailabilitySelector from "@/components/AvailabilitySelector";
+import OptimizationAssistant from "@/components/OptimizationAssistant";
+import ShareModal from "@/components/ShareModal";
 
 export default function EditCVPage() {
   const router = useRouter();
+  const { user, login } = useAuth();
   const [cvData, setCvData] = useState<CVData | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isOptimizationAssistantOpen, setIsOptimizationAssistantOpen] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   // Auto-hide notification after 5 seconds
   useEffect(() => {
@@ -188,6 +202,15 @@ export default function EditCVPage() {
     }
   };
 
+  const handleProtectedAction = (action: () => void) => {
+    if (user) {
+      action();
+    } else {
+      setPendingAction(() => action);
+      setShowAuthModal(true);
+    }
+  };
+
   if (!cvData) return null;
 
   return (
@@ -196,12 +219,29 @@ export default function EditCVPage() {
       <div className="sticky top-0 z-[100] w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4">
           
-          {/* Zone Gauche : Statut (Guest mode) */}
+          {/* Zone Gauche : Statut & Visibilité */}
           <div className="flex items-center gap-2 flex-1">
-            <div className="h-10 px-3 bg-amber-50 text-amber-700 border border-amber-100 rounded-xl text-sm font-medium flex items-center gap-2">
-              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shrink-0" />
-              <span className="hidden sm:inline">Mode Invité</span>
-            </div>
+            {!user ? (
+              <div className="h-10 px-3 bg-amber-50 text-amber-700 border border-amber-100 rounded-xl text-sm font-medium flex items-center gap-2">
+                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shrink-0" />
+                <span className="hidden sm:inline">Mode Invité</span>
+              </div>
+            ) : (
+              <>
+                <VisibilityToggle 
+                  variant="compact"
+                  initialVisible={cvData.visible ?? true} 
+                  email={cvData.personne.contact.email}
+                  onUpdate={(visible) => setCvData(prev => prev ? { ...prev, visible } : null)}
+                />
+                <AvailabilitySelector 
+                  variant="compact"
+                  initialStatus={cvData.availability}
+                  email={cvData.personne.contact.email}
+                  onUpdate={(availability) => setCvData(prev => prev ? { ...prev, availability } : null)}
+                />
+              </>
+            )}
           </div>
 
           {/* Zone Centrale : Mode d'Affichage (Segmented Switch) */}
@@ -232,21 +272,47 @@ export default function EditCVPage() {
 
           {/* Zone Droite : Actions Prioritaires */}
           <div className="flex items-center justify-end gap-2 flex-1">
+            {/* AI Button */}
+            {!showPreview && (
+              <button
+                onClick={() => handleProtectedAction(() => setIsOptimizationAssistantOpen(true))}
+                className="h-10 flex items-center gap-2 px-4 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-sm font-medium group relative"
+                title="Reconstruire tout mon CV avec l'IA"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden md:inline">Reconstruire avec l&apos;IA</span>
+                {!user && (
+                  <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white flex items-center gap-0.5">
+                    PRO
+                  </div>
+                )}
+              </button>
+            )}
+
             {/* Publish Button */}
             {!showPreview && (
               <button
                 onClick={() => cvData && handlePublish(cvData)}
                 disabled={isPublishing}
-                className="h-10 flex items-center justify-center gap-2 px-4 sm:px-8 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium shadow-sm"
+                className="h-10 flex items-center justify-center gap-2 px-4 sm:px-6 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium shadow-sm"
               >
                 {isPublishing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                <span>{isPublishing ? "Publication..." : "Publier mon CV"}</span>
+                <span className="hidden sm:inline">{isPublishing ? "Publication..." : "Publier mon CV"}</span>
               </button>
             )}
+
+            {/* Share Button */}
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="h-10 w-10 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm shrink-0"
+              title="Partager mon CV"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -295,6 +361,72 @@ export default function EditCVPage() {
           )}
         </div>
       </div>
+
+      {/* Share Modal */}
+      {cvData && (
+        <ShareModal 
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          slug={cvData.slug || ""}
+          isVisible={cvData.visible ?? true}
+        />
+      )}
+
+      {/* Optimization Assistant Modal */}
+      {cvData && (
+        <OptimizationAssistant 
+          isOpen={isOptimizationAssistantOpen}
+          onClose={() => setIsOptimizationAssistantOpen(false)}
+          cvData={cvData}
+          onSuccess={(optimizedData) => {
+            setCvData(optimizedData);
+            setNotification({ message: "CV optimisé avec succès !", type: 'success' });
+          }}
+        />
+      )}
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
+            onClick={() => setShowAuthModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
+            <div className="p-8 sm:p-10 text-center">
+              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6">
+                <Lock className="w-10 h-10" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-3">Fonctionnalité Pro</h2>
+              <p className="text-slate-600 mb-8 leading-relaxed">
+                L&apos;optimisation par IA est réservée aux membres. Connectez-vous gratuitement pour booster votre CV !
+              </p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={async () => {
+                    await login();
+                    setShowAuthModal(false);
+                    if (pendingAction) {
+                      pendingAction();
+                      setPendingAction(null);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                >
+                  <LogIn className="w-5 h-5" />
+                  Se connecter avec Google
+                </button>
+                <button 
+                  onClick={() => setShowAuthModal(false)}
+                  className="w-full py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all"
+                >
+                  Plus tard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

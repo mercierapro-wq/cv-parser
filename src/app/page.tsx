@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUpload } from "@/components/ui/file-upload";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { ArrowRight, CheckCircle2, Sparkles, X } from "lucide-react";
 import { useEffect } from "react";
 
@@ -77,6 +78,14 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4 md:p-8">
+      {/* Loading Overlay */}
+      {isUploading && (
+        <LoadingOverlay 
+          title="Analyse de votre CV en cours"
+          subtitle="Notre IA extrait vos informations pour créer votre profil. Cela peut prendre jusqu'à deux minutes..."
+        />
+      )}
+
       {/* Notifications */}
       {notification && (
         <div 
@@ -111,14 +120,14 @@ export default function Home() {
         <div className="space-y-3 md:space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs md:text-sm font-medium mb-1 md:mb-2">
             <Sparkles className="w-3.5 h-3.5 md:w-4 h-4" />
-            <span>IA Powered Resume Parser</span>
+            <span>Analyseur de CV basé sur l'IA</span>
           </div>
           <h1 className="text-2xl sm:text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
-            Transformez votre CV <br />
-            <span className="text-indigo-600">en profil web moderne</span>
+            Plus qu'un CV <br />
+            <span className="text-indigo-600">un profil intelligent et mesurable</span>
           </h1>
           <p className="text-base md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed px-2">
-            Déposez votre CV au format PDF et laissez notre IA extraire vos compétences et expériences pour créer une page de profil professionnelle instantanément.
+            Convertissez votre CV en une page web standardisée et optimisée par l'IA. Améliorez la pertinence de vos expériences en un clic et suivez l'impact de vos candidatures grâce à vos statistiques de consultation en temps réel.
           </p>
         </div>
 
@@ -134,7 +143,7 @@ export default function Home() {
               <ArrowRight className="w-5 h-5" />
             </div>
             <h3 className="font-semibold text-slate-900 mb-1 md:mb-2 text-base md:text-lg">Rapide & Automatique</h3>
-            <p className="text-xs md:text-sm text-slate-500">Analyse instantanée de votre document PDF grâce à la puissance de n8n.</p>
+            <p className="text-xs md:text-sm text-slate-500">Analyse instantanée de votre document PDF.</p>
           </div>
           <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-100">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-3 md:mb-4 text-green-600">
@@ -147,8 +156,8 @@ export default function Home() {
             <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-3 md:mb-4 text-purple-600">
               <Sparkles className="w-5 h-5" />
             </div>
-            <h3 className="font-semibold text-slate-900 mb-1 md:mb-2 text-base md:text-lg">Design Moderne</h3>
-            <p className="text-xs md:text-sm text-slate-500">Génération automatique d&apos;une page de profil élégante et responsive.</p>
+            <h3 className="font-semibold text-slate-900 mb-1 md:mb-2 text-base md:text-lg">Assistant Candidat</h3>
+            <p className="text-xs md:text-sm text-slate-500">Faites vous aider par l'IA pour optimiser votre CV.</p>
           </div>
         </div>
 

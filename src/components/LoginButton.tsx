@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { LogIn, LogOut, Loader2, User as UserIcon, ChevronDown } from 'lucide-react';
 
@@ -29,12 +30,15 @@ export default function LoginButton() {
           className="flex items-center gap-2 p-1 pr-2 hover:bg-slate-50 rounded-full transition-all border border-transparent hover:border-slate-200 group"
         >
           {user.photoURL ? (
-            <img 
+            <Image 
               src={user.photoURL} 
               alt={user.displayName || 'User'} 
+              width={32}
+              height={32}
               className="w-8 h-8 rounded-full border border-slate-200 object-cover"
               referrerPolicy="no-referrer"
               crossOrigin="anonymous"
+              unoptimized
               onError={(e) => {
                 // Fallback si l'image échoue à charger
                 (e.target as HTMLImageElement).style.display = 'none';

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, FileText, X, Loader2 } from "lucide-react";
+import { Upload, FileText, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileUploadProps {
@@ -122,12 +122,6 @@ export function FileUpload({ onFileSelect, isUploading = false }: FileUploadProp
           </div>
         )}
 
-        {isUploading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-xl z-10">
-            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-2" />
-            <p className="text-sm font-medium text-indigo-600">Analyse en cours...</p>
-          </div>
-        )}
       </div>
     </div>
   );

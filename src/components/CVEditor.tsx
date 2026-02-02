@@ -58,6 +58,19 @@ export default function CVEditor({
     }
   }, [cvData, onChange]);
 
+  // Sync email with logged-in user
+  useEffect(() => {
+    if (user?.email && cvData.personne.contact.email !== user.email) {
+      setCvData(prev => ({
+        ...prev,
+        personne: {
+          ...prev.personne,
+          contact: { ...prev.personne.contact, email: user.email! }
+        }
+      }));
+    }
+  }, [user, cvData.personne.contact.email]);
+
   const handleProtectedAction = (action: () => void) => {
     if (user) {
       action();
@@ -142,6 +155,7 @@ export default function CVEditor({
   };
 
   const updateContact = (field: string, value: string) => {
+    if (field === 'email' && user) return;
     setCvData({
       ...cvData,
       personne: {
@@ -340,14 +354,24 @@ export default function CVEditor({
             <div className="space-y-4 pt-4">
               <div className="flex items-center gap-3 text-slate-400">
                 <Mail className="w-4 h-4" />
-                <input 
-                  type="email" 
-                  value={cvData.personne.contact.email}
-                  onChange={(e) => updateContact('email', e.target.value)}
-                  placeholder="Email"
-                  disabled={isReadOnly}
-                  className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black disabled:opacity-60"
-                />
+                <div 
+                  className="flex-1 relative group/email"
+                  title={user ? "Ce champ est obligatoirement celui du profil connecté" : ""}
+                >
+                  <input 
+                    type="email" 
+                    value={cvData.personne.contact.email}
+                    onChange={(e) => updateContact('email', e.target.value)}
+                    placeholder="Email"
+                    disabled={isReadOnly || !!user}
+                    className="w-full bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black disabled:opacity-60"
+                  />
+                  {user && (
+                    <div className="absolute left-0 -top-8 hidden group-hover/email:block bg-slate-800 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
+                      L&apos;email doit correspondre à votre profil connecté
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3 text-slate-400">
                 <Phone className="w-4 h-4" />
