@@ -20,8 +20,7 @@ import Link from "next/link";
 import CVDisplay from "@/components/CVDisplay";
 import ShareModal from "@/components/ShareModal";
 import CVEditor from "@/components/CVEditor";
-import VisibilityToggle from "@/components/VisibilityToggle";
-import AvailabilitySelector from "@/components/AvailabilitySelector";
+import ToolbarSettings from "@/components/ToolbarSettings";
 import OptimizationAssistant from "@/components/OptimizationAssistant";
 
 export default function MonCVPage() {
@@ -296,97 +295,90 @@ export default function MonCVPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Sticky Header Toolbar */}
       <div className="sticky top-0 z-[100] w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4">
-          
-          {/* Zone Gauche : Statut & Visibilité (Secondary Actions) */}
-          <div className="flex items-center gap-2 flex-1">
-            {cvData && (
-              <>
-                <VisibilityToggle 
-                  variant="compact"
-                  initialVisible={cvData.visible ?? true} 
-                  email={cvData.personne.contact.email}
-                  onUpdate={(visible) => setCvData(prev => prev ? { ...prev, visible } : null)}
-                />
-                <AvailabilitySelector 
-                  variant="compact"
-                  initialStatus={cvData.availability}
-                  email={cvData.personne.contact.email}
-                  onUpdate={(availability) => setCvData(prev => prev ? { ...prev, availability } : null)}
-                />
-              </>
-            )}
-          </div>
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4 overflow-x-auto lg:overflow-visible no-scrollbar relative">
+          {/* Left Gradient Fade */}
+          <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none lg:hidden" />
+          {/* Right Gradient Fade */}
+          <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none lg:hidden" />
 
-          {/* Zone Centrale : Mode d'Affichage (Segmented Switch) */}
-          <div className="flex bg-slate-100 p-1 rounded-xl h-10">
-            <button
-              onClick={() => setShowPreview(false)}
-              className={`flex items-center gap-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                !showPreview 
-                  ? "bg-white text-slate-900 shadow-sm" 
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Edit3 className="w-4 h-4" />
-              <span className="hidden sm:inline">Édition</span>
-            </button>
-            <button
-              onClick={() => setShowPreview(true)}
-              className={`flex items-center gap-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                showPreview 
-                  ? "bg-white text-slate-900 shadow-sm" 
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Eye className="w-4 h-4" />
-              <span className="hidden sm:inline">Aperçu</span>
-            </button>
-          </div>
+          <div className="flex items-center justify-between w-full min-w-max lg:min-w-0 gap-2 sm:gap-4">
+            {/* Zone Gauche : Statut & Visibilité */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {cvData && (
+                <ToolbarSettings cvData={cvData} setCvData={setCvData} user={user} />
+              )}
+            </div>
 
-          {/* Zone Droite : Actions Prioritaires */}
-          <div className="flex items-center justify-end gap-2 flex-1">
-            {/* AI Button */}
-            {!showPreview && (
+            {/* Zone Centrale : Mode d'Affichage (Segmented Switch) */}
+            <div className="flex bg-slate-100 p-1 rounded-xl h-10 flex-shrink-0">
               <button
-                onClick={() => handleProtectedAction(() => setIsOptimizationAssistantOpen(true))}
-                className="h-10 flex items-center gap-2 px-4 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-sm font-medium group relative"
-                title="Reconstruire tout mon CV avec l'IA"
+                onClick={() => setShowPreview(false)}
+                className={`flex items-center gap-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                  !showPreview 
+                    ? "bg-white text-slate-900 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
               >
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden md:inline">Reconstruire avec l&apos;IA</span>
-                {!user && (
-                  <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white flex items-center gap-0.5">
-                    PRO
-                  </div>
-                )}
+                <Edit3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Édition</span>
               </button>
-            )}
-
-            {/* Save Button */}
-            {!showPreview && (
               <button
-                onClick={() => cvData && handleSave(cvData)}
-                disabled={isSaving}
-                className="h-10 flex items-center justify-center gap-2 px-4 sm:px-6 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium shadow-sm"
+                onClick={() => setShowPreview(true)}
+                className={`flex items-center gap-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                  showPreview 
+                    ? "bg-white text-slate-900 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
               >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                <span className="hidden sm:inline">{isSaving ? "Enregistrement..." : "Enregistrer"}</span>
+                <Eye className="w-4 h-4" />
+                <span className="hidden sm:inline">Aperçu</span>
               </button>
-            )}
+            </div>
 
-            {/* Share Button */}
-            <button
-              onClick={() => setIsShareModalOpen(true)}
-              className="h-10 w-10 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm shrink-0"
-              title="Partager mon CV"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
+            {/* Zone Droite : Actions Prioritaires */}
+            <div className="flex items-center justify-end gap-2 flex-shrink-0">
+              {/* AI Button */}
+              {!showPreview && (
+                <button
+                  onClick={() => handleProtectedAction(() => setIsOptimizationAssistantOpen(true))}
+                  className="h-10 flex items-center gap-2 px-4 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-sm font-medium group relative flex-shrink-0"
+                  title="Reconstruire tout mon CV avec l'IA"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span className="hidden md:inline">Reconstruire avec l&apos;IA</span>
+                  {!user && (
+                    <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white flex items-center gap-0.5">
+                      PRO
+                    </div>
+                  )}
+                </button>
+              )}
+
+              {/* Save Button */}
+              {!showPreview && (
+                <button
+                  onClick={() => cvData && handleSave(cvData)}
+                  disabled={isSaving}
+                  className="h-10 flex items-center justify-center gap-2 px-4 sm:px-6 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium shadow-sm flex-shrink-0"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">{isSaving ? "Enregistrement..." : "Enregistrer"}</span>
+                </button>
+              )}
+
+              {/* Share Button */}
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="h-10 w-10 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm shrink-0"
+                title="Partager mon CV"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -409,6 +409,22 @@ export default function CVEditor({
             </div>
           </section>
 
+          {/* Resume */}
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+              <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
+                <User className="w-5 h-5" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Résumé</h2>
+            </div>
+            <textarea 
+              value={cvData.resume}
+              onChange={(e) => setCvData({...cvData, resume: e.target.value})}
+              disabled={isReadOnly}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[120px] text-black leading-relaxed disabled:opacity-60"
+            />
+          </section>
+
           {/* Certifications */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -435,7 +451,7 @@ export default function CVEditor({
                   {!isReadOnly && (
                     <button 
                       onClick={() => removeCertification(index)}
-                      className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -520,24 +536,8 @@ export default function CVEditor({
           </section>
         </div>
 
-        {/* Right Column - Resume, Experience, Projects, Formation */}
+        {/* Right Column - Experience, Projects, Formation */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Resume */}
-          <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
-                <User className="w-5 h-5" />
-              </div>
-              <h2 className="text-lg font-bold text-slate-900">Résumé</h2>
-            </div>
-            <textarea 
-              value={cvData.resume}
-              onChange={(e) => setCvData({...cvData, resume: e.target.value})}
-              disabled={isReadOnly}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[120px] text-black leading-relaxed disabled:opacity-60"
-            />
-          </section>
-
           {/* Experience */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -564,7 +564,7 @@ export default function CVEditor({
                   {!isReadOnly && (
                     <button 
                       onClick={() => removeExperience(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -737,7 +737,7 @@ export default function CVEditor({
                   {!isReadOnly && (
                     <button 
                       onClick={() => removeProjet(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -819,7 +819,7 @@ export default function CVEditor({
                   {!isReadOnly && (
                     <button 
                       onClick={() => removeFormation(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

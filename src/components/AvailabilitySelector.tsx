@@ -82,28 +82,30 @@ export default function AvailabilitySelector({ initialStatus, email, onUpdate, v
 
   if (variant === 'compact') {
     return (
-      <div className="relative" ref={dropdownRef}>
+      <div className="relative w-full lg:w-auto" ref={dropdownRef}>
         <button
           onClick={() => !isLoading && setIsOpen(!isOpen)}
           disabled={isLoading}
-          className={`h-10 flex items-center gap-2 px-3 rounded-xl transition-all text-left bg-slate-100 hover:bg-slate-200 focus:ring-2 focus:ring-indigo-500/20 outline-none ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`h-10 flex items-center justify-between lg:justify-start gap-2 px-3 rounded-xl transition-all text-left bg-slate-100 hover:bg-slate-200 focus:ring-2 focus:ring-indigo-500/20 outline-none w-full lg:w-auto ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           title="Changer ma disponibilité"
         >
-          {currentConfig && (
-            <div className={`w-2 h-2 rounded-full shrink-0 ${currentConfig.dotColor} ${status === 'immediate' ? 'animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.4)]' : ''}`} />
-          )}
-          <span className="text-sm font-medium text-slate-700 whitespace-nowrap hidden sm:inline">
-            {currentConfig?.label || "Disponibilité"}
-          </span>
+          <div className="flex items-center gap-2 overflow-hidden">
+            {currentConfig && (
+              <div className={`w-2 h-2 rounded-full shrink-0 ${currentConfig.dotColor} ${status === 'immediate' ? 'animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.4)]' : ''}`} />
+            )}
+            <span className="text-sm font-medium text-slate-700 whitespace-nowrap truncate">
+              {currentConfig?.label || "Disponibilité"}
+            </span>
+          </div>
           {isLoading ? (
-            <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />
+            <Loader2 className="w-3 h-3 animate-spin text-indigo-600 flex-shrink-0" />
           ) : (
-            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
           )}
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 z-[120] w-48 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute left-0 z-[999] w-48 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
             {(Object.keys(AVAILABILITY_CONFIG) as AvailabilityStatus[]).map((key) => {
               const config = AVAILABILITY_CONFIG[key];
               const isSelected = status === key;

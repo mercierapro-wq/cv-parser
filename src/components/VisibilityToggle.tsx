@@ -70,10 +70,10 @@ export default function VisibilityToggle({ initialVisible, email, onUpdate, vari
 
   if (variant === 'compact') {
     return (
-      <div className="h-10 flex items-center gap-3 px-3 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all">
+      <div className="h-10 flex items-center gap-3 px-3 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all w-fit">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full shrink-0 ${isVisible ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse' : 'bg-slate-400'}`} />
-          <span className="text-sm font-medium text-slate-700 whitespace-nowrap hidden sm:inline">
+          <span className="text-sm font-medium text-slate-700 whitespace-nowrap">
             {isVisible ? "Public" : "Privé"}
           </span>
         </div>
@@ -81,7 +81,7 @@ export default function VisibilityToggle({ initialVisible, email, onUpdate, vari
         <button
           onClick={handleToggle}
           disabled={isLoading}
-          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 flex-shrink-0 ${
             isVisible ? 'bg-emerald-500' : 'bg-slate-300'
           }`}
           title={isVisible ? "Passer en privé" : "Passer en public"}
