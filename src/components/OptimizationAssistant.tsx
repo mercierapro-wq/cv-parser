@@ -127,7 +127,7 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-6">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
@@ -135,17 +135,17 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
       />
       
       {/* Modal Content */}
-      <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
+      <div className="relative w-full max-w-2xl max-h-[95vh] bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-8 duration-300 custom-scrollbar">
         
         {/* Progress Bar */}
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-100">
+        <div className="sticky top-0 left-0 w-full h-1.5 bg-slate-100 z-20">
           <div 
             className="h-full bg-indigo-600 transition-all duration-500 ease-out"
             style={{ width: `${(step / 7) * 100}%` }}
           />
         </div>
 
-        <div className="p-8 sm:p-10">
+        <div className="p-5 sm:p-10">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
@@ -411,7 +411,7 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
               <button
                 onClick={nextStep}
                 disabled={step === 1 && !formData.targetJob}
-                className={`flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 ${
+                className={`flex items-center gap-2 px-6 sm:px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 ${
                   step === 1 && !formData.targetJob ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
@@ -422,17 +422,17 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
               <button
                 onClick={handleOptimize}
                 disabled={isOptimizing}
-                className="flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-indigo-200 transition-all hover:shadow-indigo-300 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-10 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl sm:rounded-[1.5rem] font-bold shadow-xl shadow-indigo-200 transition-all hover:shadow-indigo-300 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base"
               >
                 {isOptimizing ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Optimisation en cours...
+                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                    <span className="whitespace-nowrap">Optimisation...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5" />
-                    Lancer l&apos;optimisation
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="whitespace-nowrap">Lancer</span>
                   </>
                 )}
               </button>

@@ -32,6 +32,29 @@ export default function EditCVPage() {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  // Scroll to hide toolbar logic
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Show toolbar if scrolling up or at the top
+      if (currentScrollY < lastScrollY || currentScrollY < 50) {
+        setIsToolbarVisible(true);
+      } 
+      // Hide toolbar if scrolling down and not at the top
+      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsToolbarVisible(false);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   // Auto-hide notification after 5 seconds
   useEffect(() => {
@@ -215,7 +238,9 @@ export default function EditCVPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Sticky Header Toolbar */}
-      <div className="sticky top-0 z-[100] w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <div className={`sticky top-0 z-[100] w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm transition-transform duration-300 ${
+        isToolbarVisible ? "translate-y-0" : "-translate-y-full"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4 overflow-x-auto lg:overflow-visible no-scrollbar relative">
           {/* Left Gradient Fade */}
           <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none lg:hidden" />
