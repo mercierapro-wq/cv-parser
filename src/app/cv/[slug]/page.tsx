@@ -45,6 +45,12 @@ async function getCVData(slug: string): Promise<CVData | null> {
         if (rawData.visible !== undefined && cvData.visible === undefined) {
           cvData.visible = rawData.visible;
         }
+        if (rawData.profilePicture && !cvData.profilePicture) {
+          cvData.profilePicture = rawData.profilePicture;
+        }
+        if (rawData.profilePictureTransform && !cvData.profilePictureTransform) {
+          cvData.profilePictureTransform = rawData.profilePictureTransform;
+        }
         return cvData;
       }
     }

@@ -108,6 +108,8 @@ export default function EditCVPage() {
               ville: parsed.personne?.contact?.ville || ""
             }
           },
+          profilePicture: parsed.profilePicture || parsed.personne?.profilePicture || "",
+          profilePictureTransform: parsed.profilePictureTransform || parsed.personne?.profilePictureTransform,
           resume: parsed.resume || "",
           experiences: (Array.isArray(parsed.experiences) ? parsed.experiences : []).map((exp: Experience) => ({
             ...exp,
@@ -174,11 +176,20 @@ export default function EditCVPage() {
         throw new Error("La variable d'environnement NEXT_PUBLIC_INSERT_CV_URL n'est pas définie");
       }
 
-      const { visible, availability, slug: currentSlug, ...cvContent } = updatedData;
+      const { visible, availability, slug: currentSlug, profilePicture, profilePictureTransform, ...cvContent } = updatedData;
+      
+      // Nettoyage des anciennes données photo si présentes dans personne
+      if (cvContent.personne) {
+        const { profilePicture: _, profilePictureTransform: __, ...cleanPersonne } = cvContent.personne as any;
+        cvContent.personne = cleanPersonne;
+      }
+
       const payload = {
         email: updatedData.personne.contact.email,
         nom: updatedData.personne.nom,
         prenom: updatedData.personne.prenom,
+        profilePicture: profilePicture,
+        profilePictureTransform: profilePictureTransform,
         slug: currentSlug,
         visible: visible ?? true,
         availability: availability || 'immediate',

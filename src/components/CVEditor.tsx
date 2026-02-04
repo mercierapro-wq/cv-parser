@@ -20,10 +20,12 @@ import {
   RotateCcw,
   AlertCircle,
   Lock,
-  LogIn
+  LogIn,
+  Camera
 } from "lucide-react";
 import { CVData, Experience, Formation, Projet, Certification } from "@/types/cv";
 import { useAuth } from "@/context/AuthContext";
+import { ProfilePictureManager } from "./ProfilePictureManager";
 
 interface CVEditorProps {
   initialData: CVData;
@@ -46,9 +48,11 @@ export default function CVEditor({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
-  // Update local state if initialData changes
+  // Update local state if initialData changes (only if it's a different object to avoid loops)
   useEffect(() => {
-    setCvData(initialData);
+    if (JSON.stringify(initialData) !== JSON.stringify(cvData)) {
+      setCvData(initialData);
+    }
   }, [initialData]);
 
   // Notify parent of changes
@@ -315,6 +319,21 @@ export default function CVEditor({
                 <User className="w-5 h-5" />
               </div>
               <h2 className="text-lg font-bold text-slate-900">Informations Personnelles</h2>
+            </div>
+
+            <div className="flex justify-center md:justify-start">
+              <ProfilePictureManager
+                prenom={cvData.personne.prenom}
+                nom={cvData.personne.nom}
+                profilePicture={cvData.profilePicture}
+                transform={cvData.profilePictureTransform}
+                onChange={(base64) => setCvData(prev => ({ ...prev, profilePicture: base64 }))}
+                onTransformChange={(transform) => setCvData(prev => ({
+                  ...prev,
+                  profilePictureTransform: transform
+                }))}
+                disabled={isReadOnly}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

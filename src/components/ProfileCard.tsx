@@ -18,28 +18,45 @@ export default function ProfileCard({ slug, data }: ProfileCardProps) {
 
   return (
     <Link href={`/cv/${slug}`} className="block group">
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 md:p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:border-indigo-100 h-full flex flex-col">
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-sm transition-all duration-300 hover:shadow-xl hover:border-indigo-100 h-full flex flex-col min-h-[400px]">
         {/* Header */}
-        <div className="flex items-center gap-3 md:gap-5 mb-4 md:mb-6">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 border border-slate-100 shrink-0 group-hover:bg-indigo-50 group-hover:text-indigo-200 transition-colors">
-            <User className="w-8 h-8 md:w-10 md:h-10" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-lg md:text-xl font-bold text-slate-900 truncate mb-0.5 md:mb-1">
+        <div className="flex flex-col items-center text-center mb-6 md:mb-8">
+          {data.profilePicture ? (
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-2 border-white shadow-md bg-slate-50 relative shrink-0 mb-4">
+              <img 
+                src={data.profilePicture} 
+                alt={`Photo de profil de ${personne.prenom} ${personne.nom}`}
+                className="absolute max-w-full max-h-full w-auto h-auto"
+                style={{
+                  left: '50%',
+                  top: '50%',
+                  transform: data.profilePictureTransform 
+                    ? `translate(calc(-50% + ${data.profilePictureTransform.x}px), calc(-50% + ${data.profilePictureTransform.y}px)) scale(${data.profilePictureTransform.scale || 1})`
+                    : 'translate(-50%, -50%)'
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 border border-slate-100 shrink-0 mb-4 group-hover:bg-indigo-50 group-hover:text-indigo-200 transition-colors">
+              <User className="w-12 h-12 md:w-16 md:h-16" />
+            </div>
+          )}
+          <div className="min-w-0 w-full">
+            <h3 className="text-xl md:text-2xl font-bold text-slate-900 truncate mb-1">
               {personne.prenom} {personne.nom}
             </h3>
-            <div className="mb-1 md:mb-2">
+            <div className="mb-2 flex justify-center">
               <AvailabilityBadge status={data.availability} size="sm" />
             </div>
-            <p className="text-indigo-600 font-semibold text-sm md:text-base truncate">
+            <p className="text-indigo-600 font-bold text-base md:text-lg truncate">
               {personne.titre_professionnel}
             </p>
           </div>
         </div>
 
-        {/* Body - Job Title is already in header, but let's make it prominent as requested */}
-        <div className="mb-4 md:mb-8 flex-grow">
-          <p className="text-slate-600 text-sm md:text-base line-clamp-3 md:line-clamp-4 leading-relaxed">
+        {/* Body */}
+        <div className="mb-6 md:mb-8 flex-grow">
+          <p className="text-slate-600 text-sm md:text-base line-clamp-4 md:line-clamp-6 leading-relaxed">
             {data.resume}
           </p>
         </div>

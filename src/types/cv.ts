@@ -12,6 +12,12 @@ export interface Personne {
   contact: Contact;
 }
 
+export interface ProfilePictureTransform {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 export interface Experience {
   poste: string;
   entreprise: string;
@@ -60,4 +66,6 @@ export interface CVData {
   visible?: boolean;
   availability?: AvailabilityStatus;
   slug?: string;
+  profilePicture?: string;
+  profilePictureTransform?: ProfilePictureTransform;
 }

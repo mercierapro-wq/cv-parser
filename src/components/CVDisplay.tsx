@@ -22,56 +22,100 @@ export default function CVDisplay({ data }: CVDisplayProps) {
     <div className="w-full space-y-8 font-sans">
       {/* Header Card */}
       <header className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-8 sm:p-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h1 className="text-4xl sm:text-5xl font-serif font-bold text-slate-900 tracking-tight">
-                {data.personne.prenom} {data.personne.nom}
-              </h1>
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="text-xl text-indigo-600 font-medium font-sans">
-                  {data.personne.titre_professionnel}
-                </p>
-                <AvailabilityBadge status={data.availability} />
-              </div>
+        <div className="p-8 sm:p-12 flex flex-col md:flex-row justify-between items-center md:items-center gap-8">
+          <div className="flex flex-col items-center md:items-start gap-6 md:gap-8 w-full md:w-auto">
+            {/* Profile Picture for Mobile */}
+            <div className="md:hidden">
+              {data.profilePicture ? (
+                <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-white shadow-md bg-slate-50 relative">
+                  <img 
+                    src={data.profilePicture} 
+                    alt={`Photo de profil de ${data.personne.prenom} ${data.personne.nom}`}
+                    className="absolute max-w-full max-h-full w-auto h-auto"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      transform: data.profilePictureTransform 
+                        ? `translate(calc(-50% + ${data.profilePictureTransform.x}px), calc(-50% + ${data.profilePictureTransform.y}px)) scale(${data.profilePictureTransform.scale || 1})`
+                        : 'translate(-50%, -50%)'
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 border border-slate-100 shadow-sm">
+                  <User className="w-16 h-16" />
+                </div>
+              )}
             </div>
-            
-            <div className="flex flex-wrap gap-y-3 gap-x-6 text-slate-500 text-sm">
-              {data.personne.contact.email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-slate-400" />
-                  <a href={`mailto:${data.personne.contact.email}`} className="hover:text-indigo-600 transition-colors">
-                    {data.personne.contact.email}
-                  </a>
+
+            <div className="space-y-4 text-center md:text-left w-full">
+              <div className="space-y-2">
+                <h1 className="text-4xl sm:text-5xl font-serif font-bold text-slate-900 tracking-tight">
+                  {data.personne.prenom} {data.personne.nom}
+                </h1>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                  <p className="text-xl text-indigo-600 font-medium font-sans">
+                    {data.personne.titre_professionnel}
+                  </p>
+                  <AvailabilityBadge status={data.availability} />
                 </div>
-              )}
-              {data.personne.contact.telephone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-slate-400" />
-                  <span>{data.personne.contact.telephone}</span>
-                </div>
-              )}
-              {data.personne.contact.ville && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                  <span>{data.personne.contact.ville}</span>
-                </div>
-              )}
-              {data.personne.contact.linkedin && (
-                <div className="flex items-center gap-2">
-                  <Linkedin className="w-4 h-4 text-slate-400" />
-                  <a href={data.personne.contact.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors">
-                    LinkedIn
-                  </a>
-                </div>
-              )}
+              </div>
+              
+              <div className="flex flex-wrap justify-center md:justify-start gap-y-3 gap-x-6 text-slate-500 text-sm">
+                {data.personne.contact.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-slate-400" />
+                    <a href={`mailto:${data.personne.contact.email}`} className="hover:text-indigo-600 transition-colors">
+                      {data.personne.contact.email}
+                    </a>
+                  </div>
+                )}
+                {data.personne.contact.telephone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <span>{data.personne.contact.telephone}</span>
+                  </div>
+                )}
+                {data.personne.contact.ville && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <span>{data.personne.contact.ville}</span>
+                  </div>
+                )}
+                {data.personne.contact.linkedin && (
+                  <div className="flex items-center gap-2">
+                    <Linkedin className="w-4 h-4 text-slate-400" />
+                    <a href={data.personne.contact.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors">
+                      LinkedIn
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
+          {/* Profile Picture for Desktop */}
           <div className="hidden md:block">
-            <div className="w-24 h-24 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-200 border border-slate-100">
-              <User className="w-12 h-12" />
-            </div>
+            {data.profilePicture ? (
+              <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-white shadow-md bg-slate-50 relative">
+                <img 
+                  src={data.profilePicture} 
+                  alt={`Photo de profil de ${data.personne.prenom} ${data.personne.nom}`}
+                  className="absolute max-w-full max-h-full w-auto h-auto"
+                  style={{
+                    left: '50%',
+                    top: '50%',
+                    transform: data.profilePictureTransform 
+                      ? `translate(calc(-50% + ${data.profilePictureTransform.x}px), calc(-50% + ${data.profilePictureTransform.y}px)) scale(${data.profilePictureTransform.scale || 1})`
+                      : 'translate(-50%, -50%)'
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 border border-slate-100 shadow-sm">
+                <User className="w-16 h-16" />
+              </div>
+            )}
           </div>
         </div>
       </header>
