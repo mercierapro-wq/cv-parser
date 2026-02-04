@@ -1,7 +1,9 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CVData } from "@/types/cv";
 import AnalyticsTracker from "@/components/AnalyticsTracker";
 import CVDisplay from "@/components/CVDisplay";
+import StructuredData from "@/components/StructuredData";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -54,6 +56,47 @@ async function getCVData(slug: string): Promise<CVData | null> {
   }
 }
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const cvData = await getCVData(slug);
+
+  if (!cvData) {
+    return {
+      title: "Profil non trouvé | NodalCV",
+    };
+  }
+
+  const { personne, competences } = cvData;
+  const fullName = `${personne.nom} ${personne.prenom}`;
+  const title = `${fullName} - ${personne.titre_professionnel} | NodalCV`;
+  
+  const skills = [...(competences.hard_skills || []), ...(competences.soft_skills || [])].slice(0, 5).join(", ");
+  const description = `Découvrez le profil professionnel de ${personne.nom} sur NodalCV. Expert en ${skills}. Consultez son parcours et ses réalisations en ligne.`;
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://nodalcv.com";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `${baseUrl}/cv/${slug}`,
+    },
+    openGraph: {
+      title,
+      description,
+      type: "profile",
+      firstName: personne.prenom,
+      lastName: personne.nom,
+      username: slug,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
+
 export default async function CVProfilePage({ params }: PageProps) {
   const { slug } = await params;
   const cvData = await getCVData(slug);
@@ -65,6 +108,7 @@ export default async function CVProfilePage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <AnalyticsTracker cvOwnerEmail={cvData.personne.contact.email} />
+      <StructuredData data={cvData} />
       <div className="max-w-5xl mx-auto">
         <CVDisplay data={cvData} />
       </div>
