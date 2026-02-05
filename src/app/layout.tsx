@@ -47,7 +47,9 @@ export default function RootLayout({
           <main className="min-h-screen">
             {children}
           </main>
-          <Footer />
+          <Suspense fallback={<div className="h-16 bg-white border-t border-slate-200" />}>
+            <Footer />
+          </Suspense>
           <CookieBanner />
         </AuthProvider>
       </body>
