@@ -7,6 +7,7 @@ import StructuredData from "@/components/StructuredData";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 async function getCVData(slug: string): Promise<CVData | null> {
@@ -103,8 +104,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function CVProfilePage({ params }: PageProps) {
+export default async function CVProfilePage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const { print } = await searchParams;
+  const isPrintMode = print === "true";
   const cvData = await getCVData(slug);
 
   if (!cvData) {
@@ -112,11 +115,11 @@ export default async function CVProfilePage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className={`min-h-screen font-sans ${isPrintMode ? 'bg-white py-0 px-0' : 'bg-[#F8FAFC] py-12 px-4 sm:px-6 lg:px-8'}`}>
       <AnalyticsTracker cvOwnerEmail={cvData.personne.contact.email} />
       <StructuredData data={cvData} />
-      <div className="max-w-5xl mx-auto">
-        <CVDisplay data={cvData} />
+      <div className={isPrintMode ? 'w-full' : 'max-w-5xl mx-auto'}>
+        <CVDisplay data={cvData} slug={slug} isPrintMode={isPrintMode} />
       </div>
     </div>
   );

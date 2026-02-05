@@ -65,7 +65,7 @@ export default function CookieBanner() {
 
       {/* Bannière de consentement */}
       {showBanner && (
-        <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 md:p-6 animate-slide-up">
+        <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 md:p-6 animate-slide-up no-print">
           <div className="max-w-5xl mx-auto bg-gray-900/95 backdrop-blur-md text-white p-6 rounded-2xl shadow-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-sm md:text-base text-center md:text-left space-y-2">
               <h3 className="font-semibold text-lg">Respect de votre vie privée</h3>

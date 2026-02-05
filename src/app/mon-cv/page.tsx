@@ -22,6 +22,7 @@ import ShareModal from "@/components/ShareModal";
 import CVEditor from "@/components/CVEditor";
 import ToolbarSettings from "@/components/ToolbarSettings";
 import OptimizationAssistant from "@/components/OptimizationAssistant";
+import DownloadPDFButton from "@/components/DownloadPDFButton";
 
 export default function MonCVPage() {
   const router = useRouter();
@@ -339,7 +340,12 @@ export default function MonCVPage() {
             {/* Zone Gauche : Statut & Visibilité */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {cvData && (
-                <ToolbarSettings cvData={cvData} setCvData={setCvData} user={user} />
+                <ToolbarSettings 
+                  cvData={cvData} 
+                  setCvData={setCvData} 
+                  user={user} 
+                  onShare={() => setIsShareModalOpen(true)}
+                />
               )}
             </div>
 
@@ -404,14 +410,25 @@ export default function MonCVPage() {
                 </button>
               )}
 
-              {/* Share Button */}
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="h-10 w-10 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm shrink-0"
-                title="Partager mon CV"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
+              {/* Share & Download Buttons - Desktop Only (Hidden on mobile as they are in the gear menu) */}
+              <div className="hidden lg:flex items-center gap-2">
+                {/* Share Button */}
+                <button
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="h-10 w-10 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm shrink-0"
+                  title="Partager mon CV"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+
+                {/* Download PDF Button */}
+                {cvData && (
+                  <DownloadPDFButton 
+                    slug={cvData.slug || ""} 
+                    fileName={`CV_${cvData.personne.prenom}_${cvData.personne.nom}`.replace(/\s+/g, '_')} 
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -450,7 +467,7 @@ export default function MonCVPage() {
 
           {showPreview ? (
             <div className="animate-in fade-in duration-500">
-              <CVDisplay data={cvData} />
+              <CVDisplay data={cvData} slug={cvData.slug || ""} />
             </div>
           ) : (
             <CVEditor 

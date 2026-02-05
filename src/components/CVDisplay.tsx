@@ -1,5 +1,6 @@
 import { CVData } from "@/types/cv";
 import AvailabilityBadge from "./AvailabilityBadge";
+import DownloadPDFButton from "./DownloadPDFButton";
 import { 
   Mail, 
   Phone, 
@@ -15,9 +16,14 @@ import {
 
 interface CVDisplayProps {
   data: CVData;
+  slug: string;
+  isPrintMode?: boolean;
 }
 
-export default function CVDisplay({ data }: CVDisplayProps) {
+export default function CVDisplay({ data, slug, isPrintMode = false }: CVDisplayProps) {
+  const fullName = `${data.personne.prenom} ${data.personne.nom}`;
+  const fileName = `CV_${data.personne.prenom}_${data.personne.nom}`.replace(/\s+/g, '_');
+
   return (
     <div className="w-full space-y-8 font-sans">
       {/* Header Card */}
@@ -50,9 +56,18 @@ export default function CVDisplay({ data }: CVDisplayProps) {
 
             <div className="space-y-4 text-center md:text-left w-full">
               <div className="space-y-2">
-                <h1 className="text-4xl sm:text-5xl font-serif font-bold text-slate-900 tracking-tight">
-                  {data.personne.prenom} {data.personne.nom}
-                </h1>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
+                  <h1 className="text-4xl sm:text-5xl font-serif font-bold text-slate-900 tracking-tight">
+                    {data.personne.prenom} {data.personne.nom}
+                  </h1>
+                  {!isPrintMode && (
+                    <DownloadPDFButton 
+                      slug={slug} 
+                      fileName={fileName} 
+                      cvOwnerEmail={data.personne.contact.email}
+                    />
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                   <p className="text-xl text-indigo-600 font-medium font-sans">
                     {data.personne.titre_professionnel}
@@ -149,7 +164,7 @@ export default function CVDisplay({ data }: CVDisplayProps) {
 
             <div className="space-y-10">
               {data.experiences.map((exp, index) => (
-                <div key={index} className="relative pl-8 border-l-2 border-slate-100 space-y-4 last:pb-0">
+                <div key={index} className="experience-item relative pl-8 border-l-2 border-slate-100 space-y-4 last:pb-0">
                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-indigo-500 shadow-sm" />
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -202,7 +217,7 @@ export default function CVDisplay({ data }: CVDisplayProps) {
               </div>
               <div className="space-y-10">
                 {data.projets.map((proj, index) => (
-                  <div key={index} className="relative pl-8 border-l-2 border-slate-100 space-y-3 last:pb-0">
+                  <div key={index} className="project-item relative pl-8 border-l-2 border-slate-100 space-y-3 last:pb-0">
                     {/* Square marker for projects to differentiate from circles in experiences */}
                     <div className="absolute -left-[9px] top-0 w-4 h-4 rounded bg-white border-2 border-cyan-500 shadow-sm" />
                     

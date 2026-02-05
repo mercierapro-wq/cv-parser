@@ -36,7 +36,7 @@ import { fr } from 'date-fns/locale';
 
 interface AnalyticsData {
   ownerEmail: string;
-  type: 'view' | 'keywords';
+  type: 'view' | 'keywords' | 'download_pdf';
   viewerId: string;
   timestamp: string;
   keyword?: string;
@@ -150,17 +150,28 @@ export default function Statistics({ userEmail }: StatisticsProps) {
         (period === 'Année' ? isSameMonth(parseISO(item.timestamp), date) : isSameDay(parseISO(item.timestamp), date))
       ).length;
 
+      const downloads = data.filter(item => 
+        item.type === 'download_pdf' && 
+        item.viewerId !== userEmail &&
+        (period === 'Année' ? isSameMonth(parseISO(item.timestamp), date) : isSameDay(parseISO(item.timestamp), date))
+      ).length;
+
       return {
         name: format(date, dateFormat, { locale: fr }),
         views,
         searches,
+        downloads,
       };
     });
-  }, [data, period]);
+  }, [data, period, userEmail]);
 
   const stats = useMemo(() => {
     const views = filteredData.filter(item => item.type === 'view').length;
     const searches = filteredData.filter(item => item.type === 'keywords').length;
+    const downloads = filteredData.filter(item => 
+      item.type === 'download_pdf' && 
+      item.viewerId !== userEmail
+    ).length;
     
     // Calcul de l'évolution (simplifié pour l'instant)
     const evolution = views > 0 ? 100 : 0;
@@ -180,8 +191,8 @@ export default function Statistics({ userEmail }: StatisticsProps) {
       .slice(0, 10)
       .map(([word]) => word);
 
-    return { views, searches, evolution, topKeywords };
-  }, [filteredData]);
+    return { views, searches, downloads, evolution, topKeywords };
+  }, [filteredData, userEmail]);
 
   if (isLoading) {
     return (
@@ -224,7 +235,7 @@ export default function Statistics({ userEmail }: StatisticsProps) {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
@@ -249,6 +260,17 @@ export default function Statistics({ userEmail }: StatisticsProps) {
           <p className="text-slate-500 text-sm font-medium">Apparitions Recherche</p>
           <h3 className="text-3xl font-bold text-slate-900">{stats.searches}</h3>
         </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">PDF</span>
+          </div>
+          <p className="text-slate-500 text-sm font-medium">Téléchargements CV</p>
+          <h3 className="text-3xl font-bold text-slate-900">{stats.downloads}</h3>
+        </div>
       </div>
 
       {/* Main Chart */}
@@ -271,6 +293,10 @@ export default function Statistics({ userEmail }: StatisticsProps) {
                 <linearGradient id="colorSearches" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorDownloads" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -312,6 +338,15 @@ export default function Statistics({ userEmail }: StatisticsProps) {
                 strokeWidth={3}
                 fillOpacity={1} 
                 fill="url(#colorSearches)" 
+              />
+              <Area 
+                type="monotone" 
+                dataKey="downloads" 
+                name="Téléchargements"
+                stroke="#f59e0b" 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorDownloads)" 
               />
             </AreaChart>
           </ResponsiveContainer>

@@ -58,3 +58,52 @@ body {
     display: none;
   }
 }
+
+@media print {
+  .no-print,
+  header,
+  footer,
+  nav,
+  button,
+  .toolbar-settings {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .min-h-screen {
+    min-height: auto !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .max-w-5xl {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Preserve colors and profile picture */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Avoid breaking experience blocks */
+  section, 
+  .experience-item,
+  .project-item {
+    break-inside: avoid !important;
+  }
+
+  /* Adjust spacing for print */
+  .py-12 {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}

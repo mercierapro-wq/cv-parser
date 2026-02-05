@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Settings } from "lucide-react";
+import { Settings, Share2 } from "lucide-react";
 import VisibilityToggle from "./VisibilityToggle";
 import AvailabilitySelector from "./AvailabilitySelector";
+import DownloadPDFButton from "./DownloadPDFButton";
 import { CVData } from "@/types/cv";
 import { User } from "firebase/auth";
 
@@ -11,9 +12,10 @@ interface ToolbarSettingsProps {
   cvData: CVData;
   setCvData: React.Dispatch<React.SetStateAction<CVData | null>>;
   user: User | null;
+  onShare?: () => void;
 }
 
-export default function ToolbarSettings({ cvData, setCvData, user }: ToolbarSettingsProps) {
+export default function ToolbarSettings({ cvData, setCvData, user, onShare }: ToolbarSettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +34,7 @@ export default function ToolbarSettings({ cvData, setCvData, user }: ToolbarSett
   return (
     <>
       {/* Desktop View */}
-      <div className="hidden lg:flex items-center gap-2 relative z-50">
+      <div className="hidden lg:flex items-center gap-2 relative z-50 toolbar-settings">
         <VisibilityToggle 
           variant="compact"
           initialVisible={cvData.visible ?? true} 
@@ -75,6 +77,25 @@ export default function ToolbarSettings({ cvData, setCvData, user }: ToolbarSett
                 initialStatus={cvData.availability}
                 email={cvData.personne.contact.email}
                 onUpdate={(availability) => setCvData((prev) => prev ? { ...prev, availability } : null)}
+              />
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+              {onShare && (
+                <button
+                  onClick={() => {
+                    onShare();
+                    setIsOpen(false);
+                  }}
+                  className="flex-1 h-10 flex items-center justify-center gap-2 bg-slate-50 text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-100 hover:text-slate-900 transition-all text-sm font-medium"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Partager
+                </button>
+              )}
+              <DownloadPDFButton 
+                slug={cvData.slug || ""} 
+                fileName={`CV_${cvData.personne.prenom}_${cvData.personne.nom}`.replace(/\s+/g, '_')} 
               />
             </div>
           </div>

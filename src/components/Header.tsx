@@ -10,8 +10,11 @@ import LoginButton from "./LoginButton";
 export default function Header() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isPrintMode = searchParams.get("print") === "true";
   const desktopInputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
+
+  if (isPrintMode) return null;
 
   const handleSearch = (e: React.FormEvent, isMobile: boolean) => {
     e.preventDefault();
