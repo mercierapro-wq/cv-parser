@@ -378,7 +378,7 @@ export default function EditCVPage() {
 
           {showPreview ? (
             <div className="animate-in fade-in duration-500">
-              <CVDisplay data={cvData} />
+              <CVDisplay data={cvData} slug={cvData.slug || ""} />
             </div>
           ) : (
             <CVEditor 
