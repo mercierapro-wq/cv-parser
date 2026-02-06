@@ -321,7 +321,7 @@ export default function CVEditor({
               <h2 className="text-lg font-bold text-slate-900">Informations Personnelles</h2>
             </div>
 
-            <div className="flex justify-center md:justify-start">
+            <div className="flex justify-center">
               <ProfilePictureManager
                 prenom={cvData.personne.prenom}
                 nom={cvData.personne.nom}

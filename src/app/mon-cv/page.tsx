@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { CVData } from "@/types/cv";
@@ -25,6 +25,18 @@ import OptimizationAssistant from "@/components/OptimizationAssistant";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
 
 export default function MonCVPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    }>
+      <MonCVContent />
+    </Suspense>
+  );
+}
+
+function MonCVContent() {
   const router = useRouter();
   const { user, loading: authLoading, login } = useAuth();
   const [cvData, setCvData] = useState<CVData | null>(null);

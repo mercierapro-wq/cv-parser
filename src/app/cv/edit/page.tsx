@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { CVData, Experience, Formation, Projet, Certification } from "@/types/cv";
@@ -22,6 +22,18 @@ import OptimizationAssistant from "@/components/OptimizationAssistant";
 import ShareModal from "@/components/ShareModal";
 
 export default function EditCVPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    }>
+      <EditCVContent />
+    </Suspense>
+  );
+}
+
+function EditCVContent() {
   const router = useRouter();
   const { user, login } = useAuth();
   const [cvData, setCvData] = useState<CVData | null>(null);

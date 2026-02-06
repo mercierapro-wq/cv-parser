@@ -1,10 +1,23 @@
 'use client';
 
+import { Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, Lock, LogIn, BarChart3 } from "lucide-react";
 import Statistics from "@/components/Statistics";
 
 export default function StatistiquesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    }>
+      <StatistiquesContent />
+    </Suspense>
+  );
+}
+
+function StatistiquesContent() {
   const { user, loading: authLoading, login } = useAuth();
 
   if (authLoading) {
