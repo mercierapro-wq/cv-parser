@@ -59,9 +59,11 @@ export default function ApplicationManagerModal({
 
   useEffect(() => {
     if (isOpen) {
-      setLocalOffer(cvData.isMaster ? (cvData.jobOffer || "") : (fetchedOffer || ""));
+      // Prioritize cvData.jobOffer if it exists (especially for optimized CVs)
+      // Fallback to fetchedOffer if cvData.jobOffer is empty
+      setLocalOffer(cvData.jobOffer || fetchedOffer || "");
     }
-  }, [isOpen, cvData.isMaster, cvData.jobOffer, fetchedOffer]);
+  }, [isOpen, cvData.jobOffer, fetchedOffer]);
 
   useEffect(() => {
     setEditableLetter(cvData.cover_letter || "");
@@ -153,7 +155,7 @@ export default function ApplicationManagerModal({
 
   if (!isOpen) return null;
 
-  const hasOffer = cvData.isMaster ? !!cvData.jobOffer?.trim() : !!fetchedOffer?.trim();
+  const hasOffer = !!(cvData.jobOffer?.trim() || fetchedOffer?.trim());
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">

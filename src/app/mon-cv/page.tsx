@@ -45,7 +45,6 @@ function MonCVContent() {
   const [isRebuildAssistantOpen, setIsRebuildAssistantOpen] = useState(false);
   const [isOfferOptimizerOpen, setIsOfferOptimizerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCvIndex, setSelectedCvIndex] = useState(0);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -576,6 +575,12 @@ function MonCVContent() {
                     <Link href="/mon-cv/main/edit" className="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
                       <Edit3 className="w-5 h-5" /> Éditer
                     </Link>
+                    <button 
+                      onClick={() => setIsRebuildAssistantOpen(true)} 
+                      className="flex items-center gap-2 px-8 py-3 bg-white border-2 border-indigo-200 text-indigo-600 rounded-2xl font-bold hover:bg-indigo-50 transition-all shadow-sm"
+                    >
+                      <Sparkles className="w-5 h-5" /> Reconstruire
+                    </button>
                     <button onClick={() => setIsOfferOptimizerOpen(true)} className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-bold hover:shadow-lg hover:shadow-indigo-200 transition-all">
                       <Sparkles className="w-5 h-5" /> Optimiser pour une offre
                     </button>
@@ -641,11 +646,11 @@ function MonCVContent() {
             isOpen={isRebuildAssistantOpen} 
             onClose={() => setIsRebuildAssistantOpen(false)} 
             cvData={masterCv} 
-            onSuccess={(optimizedData) => {
-              const updatedCvs = [...cvs];
-              updatedCvs[selectedCvIndex] = optimizedData;
-              setCvs(updatedCvs);
-              setNotification({ message: "CV reconstruit avec succès !", type: 'success' });
+            onSuccess={async (optimizedData) => {
+              // Stocker temporairement les données pour la page d'édition sans enregistrer en BDD
+              sessionStorage.setItem('rebuilt_cv_data', JSON.stringify(optimizedData));
+              // Rediriger vers la page d'édition du CV de référence
+              router.push('/mon-cv/main/edit');
               setIsRebuildAssistantOpen(false);
             }} 
           />

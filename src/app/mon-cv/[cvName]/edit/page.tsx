@@ -87,6 +87,21 @@ function EditCVContent() {
 
       try {
         setIsLoading(true);
+
+        // Vérifier d'abord si des données reconstruites sont en attente (via le dashboard)
+        const rebuiltData = sessionStorage.getItem('rebuilt_cv_data');
+        if (rebuiltData && cvNameParam === 'main') {
+          try {
+            const parsedData = JSON.parse(rebuiltData);
+            setCvData(parsedData);
+            sessionStorage.removeItem('rebuilt_cv_data');
+            // On continue quand même pour charger les existingTitles
+          } catch (e) {
+            console.error("Error parsing rebuilt data", e);
+            sessionStorage.removeItem('rebuilt_cv_data');
+          }
+        }
+
         const getCvUrl = process.env.NEXT_PUBLIC_GET_CV_URL;
         if (!getCvUrl) throw new Error("URL non configurée");
         
@@ -163,7 +178,7 @@ function EditCVContent() {
           id: targetCv._id
         };
 
-        setCvData(normalized);
+        setCvData(prev => prev || normalized);
       } catch (err) {
         console.error(err);
         router.push("/mon-cv");
@@ -481,6 +496,7 @@ function EditCVContent() {
                   user={user} 
                   onShare={() => setIsShareModalOpen(true)}
                   onOpenApplicationManager={handleOpenApplicationManager}
+                  onRebuild={() => setIsRebuildAssistantOpen(true)}
                 />
               </div>
 
@@ -497,7 +513,7 @@ function EditCVContent() {
               {!showPreview && (
                 <button 
                   onClick={handleOpenApplicationManager} 
-                  className="h-10 flex items-center gap-2 px-4 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all text-sm font-medium shrink-0"
+                  className="hidden md:flex h-10 items-center gap-2 px-4 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all text-sm font-medium shrink-0"
                 >
                   <Briefcase className="w-4 h-4 text-indigo-600" /> 
                   <span className="hidden md:inline">Candidature</span>
@@ -505,7 +521,10 @@ function EditCVContent() {
               )}
               {!showPreview && cvData.isMaster && (
                 <>
-                  <button onClick={() => setIsRebuildAssistantOpen(true)} className="h-10 flex items-center gap-2 px-4 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all text-sm font-medium">
+                  <button 
+                    onClick={() => setIsRebuildAssistantOpen(true)} 
+                    className="hidden md:flex h-10 items-center gap-2 px-4 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all text-sm font-medium"
+                  >
                     <Sparkles className="w-4 h-4" /> <span className="hidden md:inline">Reconstruire</span>
                   </button>
                 </>

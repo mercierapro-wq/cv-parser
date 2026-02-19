@@ -118,12 +118,17 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
         throw new Error("Le format de réponse de l'IA est invalide.");
       }
 
-      // 3. Fusion (Merge) : Réinjecter l'image sauvegardée
-      const mergedData = {
+      // 3. Fusion (Merge) : Réinjecter l'image sauvegardée et forcer le statut Master
+      const mergedData: CVData = {
         ...content,
         experiences: sortExperiences(Array.isArray(content.experiences) ? content.experiences : []),
         profilePicture: savedImage,
-        profilePictureTransform: savedTransform
+        profilePictureTransform: savedTransform,
+        isMaster: true,
+        optimizedFor: "",
+        jobOffer: "",
+        id: cvData.id,
+        slug: cvData.slug
       };
 
       onSuccess(mergedData);
