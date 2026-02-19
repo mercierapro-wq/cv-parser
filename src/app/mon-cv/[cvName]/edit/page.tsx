@@ -172,6 +172,7 @@ function EditCVContent() {
           availability: targetCv.availability || content.availability || 'immediate',
           slug: targetCv.slug || content.slug || "",
           isMaster: isMaster,
+          cvName: targetCv.cvName || (isMaster ? "main" : ""),
           optimizedFor: isMaster ? "" : (targetCv.cvName || targetCv.optimizedFor || ""),
           jobOffer: targetCv.offer || "",
           cover_letter: targetCv.coverLetter || targetCv.cover_letter || content.coverLetter || content.cover_letter || "",

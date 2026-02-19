@@ -125,6 +125,7 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
         profilePicture: savedImage,
         profilePictureTransform: savedTransform,
         isMaster: true,
+        cvName: "main",
         optimizedFor: "",
         jobOffer: "",
         id: cvData.id,

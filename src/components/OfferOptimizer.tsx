@@ -56,6 +56,7 @@ export default function OfferOptimizer({ isOpen, onClose, cvData, onSuccess, exi
     if (optimizedData) {
       onSuccess({ 
         ...optimizedData, 
+        cvName: cvName.trim() || "Version optimisée",
         optimizedFor: cvName.trim() || "Version optimisée", 
         isMaster: false,
         jobOffer: jobOffer 

@@ -70,6 +70,7 @@ export interface CVData {
   profilePictureTransform?: ProfilePictureTransform;
   isMaster?: boolean;
   optimizedFor?: string;
+  cvName?: string;
   jobOffer?: string;
   cover_letter?: string;
   id?: string;

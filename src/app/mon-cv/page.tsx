@@ -142,6 +142,7 @@ function MonCVContent() {
             availability: rawData.availability || content.availability || 'immediate',
             slug: rawData.slug || content.slug || "",
             isMaster: isMaster,
+            cvName: rawData.cvName || (isMaster ? "main" : ""),
             optimizedFor: (isMaster ? "" : (rawData.cvName || rawData.optimizedFor || content.optimizedFor || "")),
             jobOffer: rawData.offer || "",
             cover_letter: rawData.coverLetter || rawData.cover_letter || content.coverLetter || content.cover_letter || "",
@@ -614,7 +615,7 @@ function MonCVContent() {
                       <p className="text-xs text-slate-500">Dernière modif : {new Date().toLocaleDateString()}</p>
                     </div>
                     <div className="flex items-center gap-2 pt-2">
-                      <Link href={`/mon-cv/${cv.id || cv.optimizedFor || cv.cvName || "Version-adaptee"}/edit`} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all text-center">Éditer</Link>
+                      <Link href={`/mon-cv/${cv.id || cv.cvName || cv.optimizedFor || "Version-adaptee"}/edit`} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all text-center">Éditer</Link>
                       <button 
                         onClick={() => handleOpenApplicationManager(cv)} 
                         className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
