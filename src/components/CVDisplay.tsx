@@ -1,4 +1,5 @@
 import { CVData } from "@/types/cv";
+import { sortExperiences } from "@/lib/utils";
 import AvailabilityBadge from "./AvailabilityBadge";
 import DownloadPDFButton from "./DownloadPDFButton";
 import { 
@@ -11,16 +12,18 @@ import {
   FolderKanban, 
   Award, 
   Wrench,
-  User
+  User,
+  FileText
 } from "lucide-react";
 
 interface CVDisplayProps {
   data: CVData;
   slug: string;
   isPrintMode?: boolean;
+  onViewCoverLetter?: () => void;
 }
 
-export default function CVDisplay({ data, slug, isPrintMode = false }: CVDisplayProps) {
+export default function CVDisplay({ data, slug, isPrintMode = false, onViewCoverLetter }: CVDisplayProps) {
   const fullName = `${data.personne.prenom} ${data.personne.nom}`;
   const fileName = `CV_${data.personne.prenom}_${data.personne.nom}`.replace(/\s+/g, '_');
 
@@ -61,11 +64,22 @@ export default function CVDisplay({ data, slug, isPrintMode = false }: CVDisplay
                     {data.personne.prenom} {data.personne.nom}
                   </h1>
                   {!isPrintMode && (
-                    <DownloadPDFButton 
-                      slug={slug} 
-                      fileName={fileName} 
-                      cvOwnerEmail={data.personne.contact.email}
-                    />
+                    <div className="flex items-center gap-2">
+                      {onViewCoverLetter && (data.cover_letter || data.jobOffer) && (
+                        <button
+                          onClick={onViewCoverLetter}
+                          className="flex items-center justify-center w-10 h-10 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl transition-all border border-indigo-100 active:scale-95 shrink-0"
+                          title="Voir la lettre de motivation"
+                        >
+                          <FileText className="w-5 h-5" />
+                        </button>
+                      )}
+                      <DownloadPDFButton 
+                        slug={slug} 
+                        fileName={fileName} 
+                        cvOwnerEmail={data.personne.contact.email}
+                      />
+                    </div>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
@@ -163,7 +177,7 @@ export default function CVDisplay({ data, slug, isPrintMode = false }: CVDisplay
             </div>
 
             <div className="space-y-10">
-              {data.experiences.map((exp, index) => (
+              {sortExperiences(data.experiences).map((exp, index) => (
                 <div key={index} className="experience-item relative pl-8 border-l-2 border-slate-100 space-y-4 last:pb-0">
                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-indigo-500 shadow-sm" />
                   

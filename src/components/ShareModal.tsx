@@ -26,10 +26,39 @@ export default function ShareModal({ isOpen, onClose, slug, isVisible }: ShareMo
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
+      // Try modern Clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+      } else {
+        throw new Error("Clipboard API not available");
+      }
     } catch (err) {
-      console.error("Failed to copy: ", err);
+      // Fallback for older browsers or focus issues
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = shareUrl;
+        
+        // Ensure the textarea is not visible but part of the DOM
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          setCopied(true);
+        } else {
+          throw new Error("execCommand copy failed");
+        }
+      } catch (fallbackErr) {
+        console.error("Fallback copy failed: ", fallbackErr);
+      }
     }
   };
 

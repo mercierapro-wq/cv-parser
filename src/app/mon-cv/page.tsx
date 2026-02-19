@@ -4,25 +4,25 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { CVData } from "@/types/cv";
+import { sortExperiences } from "@/lib/utils";
 import { 
-  Save, 
   X,
   Loader2,
   Lock,
   LogIn,
-  Eye,
   Edit3,
-  Share2,
   FilePlus,
-  Sparkles
+  FileText,
+  Sparkles,
+  Trash2,
+  Briefcase
 } from "lucide-react";
 import Link from "next/link";
 import CVDisplay from "@/components/CVDisplay";
-import ShareModal from "@/components/ShareModal";
-import CVEditor from "@/components/CVEditor";
-import ToolbarSettings from "@/components/ToolbarSettings";
-import OptimizationAssistant from "@/components/OptimizationAssistant";
-import DownloadPDFButton from "@/components/DownloadPDFButton";
+import RebuildAssistant from "@/components/RebuildAssistant";
+import OfferOptimizer from "@/components/OfferOptimizer";
+import ApplicationManagerModal from "@/components/ApplicationManagerModal";
+import DeleteConfirmationModal from "@/components/DeleteConfirmationModal";
 
 export default function MonCVPage() {
   return (
@@ -39,37 +39,28 @@ export default function MonCVPage() {
 function MonCVContent() {
   const router = useRouter();
   const { user, loading: authLoading, login } = useAuth();
-  const [cvData, setCvData] = useState<CVData | null>(null);
+  const [cvs, setCvs] = useState<CVData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isOptimizationAssistantOpen, setIsOptimizationAssistantOpen] = useState(false);
+  const [isRebuildAssistantOpen, setIsRebuildAssistantOpen] = useState(false);
+  const [isOfferOptimizerOpen, setIsOfferOptimizerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const [selectedCvIndex, setSelectedCvIndex] = useState(0);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  const [isToolbarVisible, setIsToolbarVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const [generatingCoverLetter, setGeneratingCoverLetter] = useState<string | null>(null);
+  const [coverLetterText, setCoverLetterText] = useState<string | null>(null);
+  const [isApplicationManagerOpen, setIsApplicationManagerOpen] = useState(false);
+  const [currentCvId, setCurrentCvId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [cvToDeleteId, setCvToDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [fetchedOffer, setFetchedOffer] = useState<string | null>(null);
+  const [isFetchingOffer, setIsFetchingOffer] = useState(false);
 
-  // Scroll to hide toolbar logic
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      if (currentScrollY < lastScrollY || currentScrollY < 50) {
-        setIsToolbarVisible(true);
-      } 
-      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setIsToolbarVisible(false);
-      }
-      
-      setLastScrollY(currentScrollY);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+  const masterCv = cvs.find(cv => cv.isMaster) || cvs[0];
+  const adaptedVersions = cvs.filter(cv => !cv.isMaster && cv !== masterCv);
 
   // Auto-hide notification after 5 seconds
   useEffect(() => {
@@ -105,7 +96,7 @@ function MonCVContent() {
         });
 
         if (response.status === 404) {
-          setCvData(null);
+          setCvs([]);
           return;
         }
 
@@ -114,16 +105,17 @@ function MonCVContent() {
         }
 
         const data = await response.json();
+        const rawDataList = Array.isArray(data) ? data : [data];
         
-        // On vérifie si on a reçu un objet (ou le premier élément d'un tableau)
-        const rawData = Array.isArray(data) ? data[0] : data;
-        
-        if (rawData && (rawData.email || rawData.personne?.contact?.email || rawData.data)) {
-          // On récupère le contenu niché dans 'data' s'il existe, sinon on prend l'objet racine
-          const content = rawData.data || rawData;
+        // Find master CV first to use its profile picture for others
+        const masterRaw = rawDataList.find((raw, idx) => raw.isMaster ?? raw.isMain ?? (idx === 0));
+        const masterPhoto = masterRaw?.profilePicture || (masterRaw?.data?.profilePicture) || "";
+        const masterTransform = masterRaw?.profilePictureTransform || (masterRaw?.data?.profilePictureTransform);
 
-          // Normalisation des données pour correspondre à l'interface CVData
-          const normalizedData: CVData = {
+        const normalizedCvs: CVData[] = rawDataList.map((rawData, index) => {
+          const content = rawData.data || rawData;
+          const isMaster = rawData.isMaster ?? rawData.isMain ?? (index === 0);
+          return {
             personne: {
               prenom: content.prenom || content.personne?.prenom || rawData.prenom || "",
               nom: content.nom || content.personne?.nom || rawData.nom || "",
@@ -135,10 +127,10 @@ function MonCVContent() {
                 ville: content.ville || content.personne?.contact?.ville || ""
               }
             },
-            profilePicture: rawData.profilePicture || content.profilePicture || content.personne?.profilePicture || "",
-            profilePictureTransform: rawData.profilePictureTransform || content.profilePictureTransform || content.personne?.profilePictureTransform,
+            profilePicture: isMaster ? (rawData.profilePicture || content.profilePicture || "") : masterPhoto,
+            profilePictureTransform: isMaster ? (rawData.profilePictureTransform || content.profilePictureTransform) : masterTransform,
             resume: content.resume || "",
-            experiences: Array.isArray(content.experiences) ? content.experiences : [],
+            experiences: sortExperiences(Array.isArray(content.experiences) ? content.experiences : []),
             projets: Array.isArray(content.projets) ? content.projets : [],
             formation: Array.isArray(content.formation) ? content.formation : [],
             certifications: Array.isArray(content.certifications) ? content.certifications : [],
@@ -149,12 +141,16 @@ function MonCVContent() {
             },
             visible: rawData.visible ?? content.visible ?? true,
             availability: rawData.availability || content.availability || 'immediate',
-            slug: rawData.slug || content.slug || ""
+            slug: rawData.slug || content.slug || "",
+            isMaster: isMaster,
+            optimizedFor: (isMaster ? "" : (rawData.cvName || rawData.optimizedFor || content.optimizedFor || "")),
+            jobOffer: rawData.offer || "",
+            cover_letter: rawData.coverLetter || rawData.cover_letter || content.coverLetter || content.cover_letter || "",
+            id: rawData._id
           };
-          setCvData(normalizedData);
-        } else {
-          setCvData(null);
-        }
+        });
+
+        setCvs(normalizedCvs);
       } catch (err) {
         console.error("Fetch error:", err);
         setError("Impossible de charger votre CV. Veuillez réessayer plus tard.");
@@ -171,9 +167,8 @@ function MonCVContent() {
   }, [user, authLoading]);
 
   const handleSave = async (updatedData: CVData) => {
-    if (!updatedData) return;
+    if (!updatedData || !user) return;
 
-    // Validation Email
     if (!updatedData.personne.contact.email.trim()) {
       setNotification({ 
         message: "L'adresse email est obligatoire pour enregistrer le CV.", 
@@ -183,81 +178,309 @@ function MonCVContent() {
     }
 
     setIsSaving(true);
-    setNotification(null); // Clear previous notifications
-
     try {
       const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL;
-      
-      if (!insertUrl) {
-        throw new Error("La variable d'environnement NEXT_PUBLIC_INSERT_CV_URL n'est pas définie");
-      }
+      if (!insertUrl) throw new Error("URL non configurée");
 
       const { visible, availability, slug: currentSlug, profilePicture, profilePictureTransform, ...cvContent } = updatedData;
       
-      // Nettoyage des anciennes données photo si présentes dans personne
       if (cvContent.personne) {
         const { profilePicture: _, profilePictureTransform: __, ...cleanPersonne } = cvContent.personne as any;
         cvContent.personne = cleanPersonne;
       }
 
       const payload = {
-        email: updatedData.personne.contact.email,
+        email: user.email,
         nom: updatedData.personne.nom,
         prenom: updatedData.personne.prenom,
-        profilePicture: profilePicture,
-        profilePictureTransform: profilePictureTransform,
+        profilePicture: updatedData.isMaster ? profilePicture : null,
+        profilePictureTransform: updatedData.isMaster ? profilePictureTransform : null,
         slug: currentSlug,
-        visible: visible ?? true,
+        visible: updatedData.isMaster ? (visible ?? true) : false,
         availability: availability || 'immediate',
+        isMain: updatedData.isMaster || false,
+        cvName: updatedData.isMaster ? "main" : (updatedData.optimizedFor || "Version optimisée"),
+        offer: updatedData.jobOffer,
         data: cvContent
       };
 
       const response = await fetch(insertUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error("Erreur lors de l'enregistrement du CV");
-      }
+      if (!response.ok) throw new Error("Erreur lors de l'enregistrement");
 
       const result = await response.json();
       const slug = result[0]?.slug;
 
-      if (!slug) {
-        throw new Error("Le serveur n'a pas renvoyé de slug valide");
-      }
+      if (!slug) throw new Error("Slug non valide");
 
-      setCvData(updatedData);
-      setNotification({ 
-        message: "CV enregistré avec succès !", 
-        type: 'success' 
-      });
+      const savedCv = { ...updatedData, slug };
+      const existingIndex = cvs.findIndex(c => c.slug === updatedData.slug);
       
-      // Redirection vers la page du CV (/cv/slug) après un court délai pour laisser voir le message
+      if (existingIndex !== -1) {
+        const updatedCvs = [...cvs];
+        updatedCvs[existingIndex] = savedCv;
+        setCvs(updatedCvs);
+      } else {
+        setCvs(prev => [...prev, savedCv]);
+      }
+      
+      setNotification({ message: "CV enregistré avec succès !", type: 'success' });
+      
       setTimeout(() => {
-        router.push(`/cv/${slug}`);
+        const cvName = updatedData.isMaster ? "main" : (updatedData.optimizedFor || "Version optimisée");
+        router.push(`/mon-cv/${cvName}/edit`);
       }, 1500);
     } catch (error) {
-      console.error("Erreur:", error);
-      setNotification({ 
-        message: "Une erreur est survenue lors de l'enregistrement du CV.", 
-        type: 'error' 
-      });
+      console.error(error);
+      setNotification({ message: "Une erreur est survenue", type: 'error' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleProtectedAction = (action: () => void) => {
-    if (user) {
-      action();
-    } else {
-      setPendingAction(() => action);
-      setShowAuthModal(true);
+  const handleDelete = (cvId: string) => {
+    setCvToDeleteId(cvId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!cvToDeleteId || !user) return;
+
+    setIsDeleting(true);
+    try {
+      const deleteUrl = process.env.NEXT_PUBLIC_DELETE_CV_URL;
+      if (!deleteUrl) throw new Error("URL de suppression non configurée");
+
+      const response = await fetch(deleteUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ _id: cvToDeleteId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la suppression du CV");
+      }
+
+      // Update local state
+      setCvs(prevCvs => prevCvs.filter(cv => cv.id !== cvToDeleteId));
+      setNotification({ message: "CV supprimé avec succès", type: 'success' });
+      setIsDeleteModalOpen(false);
+    } catch (err) {
+      console.error("Delete error:", err);
+      setNotification({ message: "Erreur lors de la suppression", type: 'error' });
+    } finally {
+      setIsDeleting(false);
+      setCvToDeleteId(null);
+    }
+  };
+
+  const handleOpenApplicationManager = async (cv: CVData) => {
+    // Si on n'a pas de lettre localement, on essaie de la récupérer via l'offre
+    if (!cv.cover_letter && cv.id) {
+      setIsFetchingOffer(true);
+      try {
+        const getOfferUrl = process.env.NEXT_PUBLIC_GET_OFFER_URL;
+        if (getOfferUrl) {
+          const response = await fetch(getOfferUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ _id: cv.id }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const rawData = Array.isArray(data) ? data[0] : data;
+            const coverLetter = rawData?.coverLetter;
+            const offerText = rawData?.offer;
+            
+            if (offerText) {
+              setFetchedOffer(offerText);
+            }
+
+            if (coverLetter) {
+              setCoverLetterText(coverLetter);
+              setCurrentCvId(cv.id || null);
+              // Update the CV in the list
+              setCvs(prev => prev.map(c => c.id === cv.id ? { ...c, cover_letter: coverLetter } : c));
+              setIsApplicationManagerOpen(true);
+              setIsFetchingOffer(false);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching cover letter:", error);
+      } finally {
+        setIsFetchingOffer(false);
+      }
+    }
+
+    setCoverLetterText(cv.cover_letter || "");
+    setCurrentCvId(cv.id || null);
+    setIsApplicationManagerOpen(true);
+  };
+
+  const handleGenerateCoverLetter = async () => {
+    const cv = cvs.find(c => c.id === currentCvId);
+    if (!cv || !cv.jobOffer || !currentCvId) {
+      setNotification({ message: "L'offre d'emploi est manquante pour générer la lettre", type: 'error' });
+      return;
+    }
+    
+    setGeneratingCoverLetter(currentCvId);
+    try {
+      const url = process.env.NEXT_PUBLIC_CREATE_COVER_LETTER_URL;
+      if (!url) throw new Error("URL non configurée");
+
+      const { profilePicture: _, profilePictureTransform: __, ...cvWithoutImage } = cv;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cv: cvWithoutImage,
+          job_offer: cv.jobOffer
+        }),
+      });
+
+      if (!response.ok) throw new Error("Erreur lors de la génération de la lettre de motivation");
+
+      const result = await response.json();
+      const text = Array.isArray(result) ? result[0]?.output : result?.output;
+      
+      if (!text) throw new Error("Format de réponse invalide");
+
+      setCoverLetterText(text);
+      // Update the CV in the list as well
+      setCvs(prev => prev.map(c => c.id === currentCvId ? { ...c, cover_letter: text } : c));
+      setNotification({ message: "Lettre de motivation générée !", type: 'success' });
+    } catch (error) {
+      console.error(error);
+      setNotification({ message: "Une erreur est survenue lors de la génération", type: 'error' });
+    } finally {
+      setGeneratingCoverLetter(null);
+    }
+  };
+
+  const handleDownloadCoverLetterPDF = async (currentText: string) => {
+    if (!currentText) return;
+
+    try {
+      // On crée un document HTML simple pour la lettre
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: sans-serif; line-height: 1.6; padding: 40px; color: #334155; }
+            .content { white-space: pre-wrap; }
+          </style>
+        </head>
+        <body>
+          <div class="content">${currentText}</div>
+        </body>
+        </html>
+      `;
+
+      // On utilise window.print() comme alternative fiable.
+      
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 250);
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Une erreur est survenue lors de la génération du PDF.");
+    }
+  };
+
+  const handleSaveOffer = async (offer: string) => {
+    if (!currentCvId) return;
+
+    try {
+      const url = process.env.NEXT_PUBLIC_SAVE_OFFER_URL;
+      if (!url) throw new Error("URL non configurée");
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          _id: currentCvId,
+          offer: offer
+        }),
+      });
+
+      if (!response.ok) throw new Error("Erreur lors de l'enregistrement de l'offre");
+
+      // Si l'offre est nouvelle, on efface l'ancienne lettre
+      const cv = cvs.find(c => c.id === currentCvId);
+      const currentOffer = cv?.isMaster ? cv.jobOffer : fetchedOffer;
+      const isNewOffer = currentOffer !== offer;
+      
+      setCvs(prev => prev.map(c => c.id === currentCvId ? { 
+        ...c, 
+        jobOffer: c.isMaster ? offer : c.jobOffer,
+        cover_letter: isNewOffer ? "" : c.cover_letter 
+      } : c));
+      
+      if (cv && !cv.isMaster) {
+        setFetchedOffer(offer);
+      }
+      
+      if (isNewOffer) {
+        setCoverLetterText("");
+      }
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleSaveCoverLetter = async (currentText: string) => {
+    if (!currentCvId) {
+      setNotification({ message: "ID du CV manquant", type: 'error' });
+      return;
+    }
+
+    try {
+      const url = process.env.NEXT_PUBLIC_SAVE_COVER_LETTER_URL;
+      if (!url) throw new Error("URL non configurée");
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          _id: currentCvId,
+          coverLetter: currentText
+        }),
+      });
+
+      if (!response.ok) throw new Error("Erreur lors de l'enregistrement de la lettre");
+
+      setCoverLetterText(currentText);
+      setNotification({ message: "Lettre de motivation enregistrée !", type: 'success' });
+      
+      // Redirection vers le dashboard (ici on ferme juste la modale car on y est déjà)
+      setTimeout(() => {
+        setIsApplicationManagerOpen(false);
+      }, 1500);
+    } catch (error) {
+      console.error(error);
+      setNotification({ message: "Une erreur est survenue lors de l'enregistrement", type: 'error' });
+      throw error;
     }
   };
 
@@ -279,12 +502,7 @@ function MonCVContent() {
           </div>
           <h2 className="text-xl font-bold text-slate-900 mb-2">Oups !</h2>
           <p className="text-slate-600 mb-6">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-semibold"
-          >
-            Réessayer
-          </button>
+          <button onClick={() => window.location.reload()} className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-semibold">Réessayer</button>
         </div>
       </div>
     );
@@ -298,22 +516,16 @@ function MonCVContent() {
             <Lock className="w-10 h-10" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-3">Accès réservé</h2>
-          <p className="text-slate-600 mb-8 leading-relaxed">
-            Vous devez être connecté pour accéder à votre espace personnel et gérer vos CV.
-          </p>
-          <button 
-            onClick={() => login()}
-            className="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-100"
-          >
-            <LogIn className="w-5 h-5" />
-            Se connecter
+          <p className="text-slate-600 mb-8 leading-relaxed">Vous devez être connecté pour accéder à votre espace personnel.</p>
+          <button onClick={() => login()} className="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-100">
+            <LogIn className="w-5 h-5" /> Se connecter
           </button>
         </div>
       </div>
     );
   }
 
-  if (!cvData) {
+  if (!masterCv) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
         <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-200 text-center max-w-lg">
@@ -321,239 +533,169 @@ function MonCVContent() {
             <FilePlus className="w-10 h-10" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-3">Prêt à créer votre premier CV ?</h2>
-          <p className="text-slate-600 mb-8 leading-relaxed">
-            Il semble que vous n&apos;ayez pas encore de CV enregistré. 
-            Importez votre CV actuel pour commencer à le personnaliser !
-          </p>
-          <Link 
-            href="/"
-            className="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-100"
-          >
-            Créer mon premier CV
-          </Link>
+          <p className="text-slate-600 mb-8 leading-relaxed">Importez votre CV actuel pour commencer !</p>
+          <Link href="/" className="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-100">Créer mon premier CV</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Sticky Header Toolbar */}
-      <div className={`sticky top-0 z-[100] w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm transition-transform duration-300 ${
-        isToolbarVisible ? "translate-y-0" : "-translate-y-full"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4 overflow-x-auto lg:overflow-visible no-scrollbar relative">
-          {/* Left Gradient Fade */}
-          <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none lg:hidden" />
-          {/* Right Gradient Fade */}
-          <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none lg:hidden" />
-
-          <div className="flex items-center justify-between w-full min-w-max lg:min-w-0 gap-2 sm:gap-4">
-            {/* Zone Gauche : Statut & Visibilité */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {cvData && (
-                <ToolbarSettings 
-                  cvData={cvData} 
-                  setCvData={setCvData} 
-                  user={user} 
-                  onShare={() => setIsShareModalOpen(true)}
-                />
-              )}
-            </div>
-
-            {/* Zone Centrale : Mode d'Affichage (Segmented Switch) */}
-            <div className="flex bg-slate-100 p-1 rounded-xl h-10 flex-shrink-0">
-              <button
-                onClick={() => setShowPreview(false)}
-                className={`flex items-center gap-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                  !showPreview 
-                    ? "bg-white text-slate-900 shadow-sm" 
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <Edit3 className="w-4 h-4" />
-                <span className="hidden sm:inline">Édition</span>
-              </button>
-              <button
-                onClick={() => setShowPreview(true)}
-                className={`flex items-center gap-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                  showPreview 
-                    ? "bg-white text-slate-900 shadow-sm" 
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <Eye className="w-4 h-4" />
-                <span className="hidden sm:inline">Aperçu</span>
-              </button>
-            </div>
-
-            {/* Zone Droite : Actions Prioritaires */}
-            <div className="flex items-center justify-end gap-2 flex-shrink-0">
-              {/* AI Button */}
-              {!showPreview && (
-                <button
-                  onClick={() => handleProtectedAction(() => setIsOptimizationAssistantOpen(true))}
-                  className="h-10 flex items-center gap-2 px-4 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-sm font-medium group relative flex-shrink-0"
-                  title="Reconstruire tout mon CV avec l'IA"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span className="hidden md:inline">Reconstruire avec l&apos;IA</span>
-                  {!user && (
-                    <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm border border-white flex items-center gap-0.5">
-                      PRO
-                    </div>
-                  )}
-                </button>
-              )}
-
-              {/* Save Button */}
-              {!showPreview && (
-                <button
-                  onClick={() => cvData && handleSave(cvData)}
-                  disabled={isSaving}
-                  className="h-10 flex items-center justify-center gap-2 px-4 sm:px-6 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium shadow-sm flex-shrink-0"
-                >
-                  {isSaving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  <span className="hidden sm:inline">{isSaving ? "Enregistrement..." : "Enregistrer"}</span>
-                </button>
-              )}
-
-              {/* Share & Download Buttons - Desktop Only (Hidden on mobile as they are in the gear menu) */}
-              <div className="hidden lg:flex items-center gap-2">
-                {/* Share Button */}
-                <button
-                  onClick={() => setIsShareModalOpen(true)}
-                  className="h-10 w-10 flex items-center justify-center bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm shrink-0"
-                  title="Partager mon CV"
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-
-                {/* Download PDF Button */}
-                {cvData && (
-                  <DownloadPDFButton 
-                    slug={cvData.slug || ""} 
-                    fileName={`CV_${cvData.personne.prenom}_${cvData.personne.nom}`.replace(/\s+/g, '_')} 
-                  />
-                )}
-              </div>
+    <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto space-y-12">
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-slate-900">Mon CV de Référence</h2>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full border border-indigo-200">Source de référence</span>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto space-y-8">
-          
-          {/* Notifications */}
-          {notification && (
-            <div 
-              className={`fixed top-20 right-4 z-[999] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-top-4 duration-300 ${
-                notification.type === 'success' 
-                  ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
-                  : 'bg-red-50 border-red-100 text-red-800'
-              }`}
-            >
-              <div className={`p-1.5 rounded-full ${
-                notification.type === 'success' ? 'bg-emerald-200 text-emerald-700' : 'bg-red-200 text-red-700'
-              }`}>
-                {notification.type === 'success' ? (
-                  <Save className="w-4 h-4" />
-                ) : (
-                  <X className="w-4 h-4" />
-                )}
-              </div>
-              <p className="font-bold text-sm">{notification.message}</p>
-              <button 
-                onClick={() => setNotification(null)}
-                className="ml-4 text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {showPreview ? (
-            <div className="animate-in fade-in duration-500">
-              <CVDisplay data={cvData} slug={cvData.slug || ""} />
-            </div>
-          ) : (
-            <CVEditor 
-              initialData={cvData!} 
-              onChange={setCvData}
-            />
-          )}
-
-          {/* Share Modal */}
-          {cvData && (
-            <ShareModal 
-              isOpen={isShareModalOpen}
-              onClose={() => setIsShareModalOpen(false)}
-              slug={cvData.slug || ""}
-              isVisible={cvData.visible ?? true}
-            />
-          )}
-
-          {/* Optimization Assistant Modal */}
-          {cvData && (
-            <OptimizationAssistant 
-              isOpen={isOptimizationAssistantOpen}
-              onClose={() => setIsOptimizationAssistantOpen(false)}
-              cvData={cvData}
-              onSuccess={(optimizedData) => {
-                setCvData(optimizedData);
-                setNotification({ message: "CV optimisé avec succès !", type: 'success' });
-              }}
-            />
-          )}
-
-          {/* Auth Modal */}
-          {showAuthModal && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
-              <div 
-                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
-                onClick={() => setShowAuthModal(false)}
-              />
-              <div className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
-                <div className="p-8 sm:p-10 text-center">
-                  <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6">
-                    <Lock className="w-10 h-10" />
+          {masterCv && (
+            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden group transition-all hover:shadow-2xl hover:shadow-indigo-100/50">
+              <div className="p-8 sm:p-12 flex flex-col md:flex-row items-center gap-8">
+                <div className="w-full md:w-48 h-64 bg-slate-50 rounded-2xl border border-slate-100 flex-shrink-0 overflow-hidden relative">
+                  <div className="absolute inset-0 p-4 scale-[0.25] origin-top-left w-[400%] h-[400%] pointer-events-none opacity-40">
+                    <CVDisplay 
+                       data={masterCv} 
+                       slug={masterCv.slug || ""} 
+                       isPrintMode 
+                       onViewCoverLetter={() => handleOpenApplicationManager(masterCv)}
+                     />
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-3">Fonctionnalité Pro</h2>
-                  <p className="text-slate-600 mb-8 leading-relaxed">
-                    L&apos;optimisation par IA est réservée aux membres. Connectez-vous gratuitement pour booster votre CV !
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    <button 
-                      onClick={async () => {
-                        await login();
-                        setShowAuthModal(false);
-                        if (pendingAction) {
-                          pendingAction();
-                          setPendingAction(null);
-                        }
-                      }}
-                      className="flex items-center justify-center gap-2 w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
-                    >
-                      <LogIn className="w-5 h-5" />
-                      Se connecter avec Google
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/80 to-transparent" />
+                </div>
+
+                <div className="flex-1 space-y-6 text-center md:text-left">
+                  <div>
+                    <h3 className="text-3xl font-bold text-slate-900 mb-2">{masterCv.personne.prenom} {masterCv.personne.nom}</h3>
+                    <p className="text-xl text-indigo-600 font-medium">{masterCv.personne.titre_professionnel}</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                    <Link href="/mon-cv/main/edit" className="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+                      <Edit3 className="w-5 h-5" /> Éditer
+                    </Link>
+                    <button onClick={() => setIsOfferOptimizerOpen(true)} className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-bold hover:shadow-lg hover:shadow-indigo-200 transition-all">
+                      <Sparkles className="w-5 h-5" /> Optimiser pour une offre
                     </button>
                     <button 
-                      onClick={() => setShowAuthModal(false)}
-                      className="w-full py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all"
+                      onClick={() => handleOpenApplicationManager(masterCv)} 
+                      className="flex items-center gap-2 px-8 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 transition-all shadow-sm"
                     >
-                      Plus tard
+                      <Briefcase className="w-5 h-5 text-indigo-600" /> Candidature
                     </button>
                   </div>
                 </div>
               </div>
             </div>
           )}
-        </div>
+        </section>
+
+        <section className="space-y-6">
+          <h2 className="text-xl font-bold text-slate-900">Versions adaptées</h2>
+          {adaptedVersions.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {adaptedVersions.map((cv, idx) => (
+                <div key={cv.id || idx} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all opacity-80 hover:opacity-100 group">
+                  <div className="space-y-4">
+                    <div className="h-40 bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden relative">
+                      <div className="absolute inset-0 p-4 scale-[0.2] origin-top-left w-[500%] h-[500%] pointer-events-none opacity-30">
+                        <CVDisplay data={cv} slug={cv.slug || ""} isPrintMode />
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 truncate">{cv.optimizedFor || "Version adaptée"}</h4>
+                      <p className="text-xs text-slate-500">Dernière modif : {new Date().toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <Link href={`/mon-cv/${cv.id || cv.optimizedFor || cv.cvName || "Version-adaptee"}/edit`} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all text-center">Éditer</Link>
+                      <button 
+                        onClick={() => handleOpenApplicationManager(cv)} 
+                        className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
+                        title="Candidature"
+                      >
+                        <Briefcase className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => cv.id && handleDelete(cv.id)} 
+                        className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center">
+              <p className="text-slate-500 font-medium">Vous n&apos;avez pas encore de versions adaptées. Utilisez l&apos;IA pour en créer une !</p>
+            </div>
+          )}
+        </section>
+
+        {masterCv && (
+          <RebuildAssistant 
+            isOpen={isRebuildAssistantOpen} 
+            onClose={() => setIsRebuildAssistantOpen(false)} 
+            cvData={masterCv} 
+            onSuccess={(optimizedData) => {
+              const updatedCvs = [...cvs];
+              updatedCvs[selectedCvIndex] = optimizedData;
+              setCvs(updatedCvs);
+              setNotification({ message: "CV reconstruit avec succès !", type: 'success' });
+              setIsRebuildAssistantOpen(false);
+            }} 
+          />
+        )}
+
+        {masterCv && (
+          <OfferOptimizer 
+            isOpen={isOfferOptimizerOpen} 
+            onClose={() => setIsOfferOptimizerOpen(false)} 
+            cvData={masterCv} 
+            existingTitles={cvs.map(c => c.isMaster ? "main" : (c.optimizedFor || ""))}
+            onSuccess={async (optimizedData, saveAsNew) => {
+              if (saveAsNew) {
+                const newCv = {
+                  ...optimizedData,
+                  isMaster: false,
+                  optimizedFor: optimizedData.optimizedFor || "Version optimisée",
+                  slug: `cv-${Date.now()}`
+                };
+                await handleSave(newCv);
+              } else {
+                setNotification({ message: "Préparation du téléchargement...", type: 'success' });
+              }
+              setIsOfferOptimizerOpen(false);
+            }} 
+          />
+        )}
+
+        <ApplicationManagerModal 
+          isOpen={isApplicationManagerOpen}
+          onClose={() => setIsApplicationManagerOpen(false)}
+          cvData={cvs.find(c => c.id === currentCvId) || masterCv}
+          onSaveOffer={handleSaveOffer}
+          onSaveCoverLetter={handleSaveCoverLetter}
+          onDownloadCoverLetterPDF={handleDownloadCoverLetterPDF}
+          onGenerateCoverLetter={handleGenerateCoverLetter}
+          isGeneratingCoverLetter={!!generatingCoverLetter}
+          isFetchingOffer={isFetchingOffer}
+          fetchedOffer={fetchedOffer}
+        />
+
+        <DeleteConfirmationModal 
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setCvToDeleteId(null);
+          }}
+          onConfirm={confirmDelete}
+          isDeleting={isDeleting}
+        />
       </div>
     </div>
   );

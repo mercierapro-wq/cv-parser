@@ -68,4 +68,9 @@ export interface CVData {
   slug?: string;
   profilePicture?: string;
   profilePictureTransform?: ProfilePictureTransform;
+  isMaster?: boolean;
+  optimizedFor?: string;
+  jobOffer?: string;
+  cover_letter?: string;
+  id?: string;
 }

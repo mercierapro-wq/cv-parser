@@ -6,11 +6,20 @@ import { Shield, Loader2 } from "lucide-react";
 interface VisibilityToggleProps {
   initialVisible: boolean;
   email: string;
+  isMain?: boolean;
+  cvName?: string;
   onUpdate?: (visible: boolean) => void;
   variant?: 'default' | 'compact';
 }
 
-export default function VisibilityToggle({ initialVisible, email, onUpdate, variant = 'default' }: VisibilityToggleProps) {
+export default function VisibilityToggle({ 
+  initialVisible, 
+  email, 
+  isMain = true,
+  cvName = "main",
+  onUpdate, 
+  variant = 'default' 
+}: VisibilityToggleProps) {
   const [isVisible, setIsVisible] = useState(initialVisible);
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -45,7 +54,9 @@ export default function VisibilityToggle({ initialVisible, email, onUpdate, vari
         },
         body: JSON.stringify({ 
           email, 
-          visible: newValue 
+          visible: newValue,
+          isMain,
+          cvName
         }),
       });
 

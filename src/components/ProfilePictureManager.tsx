@@ -15,8 +15,7 @@ interface ProfilePictureManagerProps {
   nom: string;
   profilePicture?: string;
   transform?: ProfilePictureTransform;
-  onChange: (base64: string | undefined) => void;
-  onTransformChange: (transform: ProfilePictureTransform | undefined) => void;
+  onUpdate: (base64: string | undefined, transform: ProfilePictureTransform | undefined) => void;
   disabled?: boolean;
 }
 
@@ -27,8 +26,7 @@ export const ProfilePictureManager: React.FC<ProfilePictureManagerProps> = ({
   nom,
   profilePicture,
   transform = { x: 0, y: 0, scale: 1 },
-  onChange,
-  onTransformChange,
+  onUpdate,
   disabled = false,
 }) => {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -42,9 +40,16 @@ export const ProfilePictureManager: React.FC<ProfilePictureManagerProps> = ({
   // Sync local transform with props when not dragging
   useEffect(() => {
     if (!isDraggingImage) {
-      setLocalTransform(transform);
+      // Deep comparison to avoid infinite loops if transform object is recreated with same values
+      if (
+        transform.x !== localTransform.x ||
+        transform.y !== localTransform.y ||
+        transform.scale !== localTransform.scale
+      ) {
+        setLocalTransform(transform);
+      }
     }
-  }, [transform, isDraggingImage]);
+  }, [transform, isDraggingImage, localTransform]);
 
   const dragStartPos = useRef({ x: 0, y: 0 });
 
@@ -64,10 +69,9 @@ export const ProfilePictureManager: React.FC<ProfilePictureManagerProps> = ({
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      onChange(base64String);
       const defaultTransform = { x: 0, y: 0, scale: 1 };
       setLocalTransform(defaultTransform);
-      onTransformChange(defaultTransform);
+      onUpdate(base64String, defaultTransform);
     };
     reader.onerror = () => {
       setError('Erreur lors de la lecture du fichier.');
@@ -137,7 +141,7 @@ export const ProfilePictureManager: React.FC<ProfilePictureManagerProps> = ({
       if (isDraggingImage) {
         setIsDraggingImage(false);
         // Sync with parent only when drag ends to avoid re-render loops
-        onTransformChange(localTransform);
+        onUpdate(profilePicture, localTransform);
       }
     };
 
@@ -150,18 +154,17 @@ export const ProfilePictureManager: React.FC<ProfilePictureManagerProps> = ({
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [isDraggingImage, localTransform, onTransformChange]);
+  }, [isDraggingImage, localTransform, onUpdate, profilePicture]);
 
   const handleZoom = (delta: number) => {
     const newScale = Math.max(0.5, Math.min(3, (localTransform.scale || 1) + delta));
     const newTransform = { ...localTransform, scale: newScale };
     setLocalTransform(newTransform);
-    onTransformChange(newTransform);
+    onUpdate(profilePicture, newTransform);
   };
 
   const removePicture = () => {
-    onChange(undefined);
-    onTransformChange(undefined);
+    onUpdate(undefined, undefined);
     setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';

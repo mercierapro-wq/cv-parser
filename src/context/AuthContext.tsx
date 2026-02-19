@@ -54,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               slug: currentSlug,
               visible: visible ?? true,
               availability: availability || 'immediate',
+              isMain: true,
+              cvName: "main",
               data: cvContent
             };
 

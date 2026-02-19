@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Briefcase, 
   User, 
@@ -47,31 +47,44 @@ export default function CVEditor({
   const [shimmerIndex, setShimmerIndex] = useState<number | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  
+  const isInternalUpdate = useRef(false);
 
-  // Update local state if initialData changes (only if it's a different object to avoid loops)
+  // Helper to update local state and flag it as internal
+  const updateCvData = (update: CVData | ((prev: CVData) => CVData)) => {
+    isInternalUpdate.current = true;
+    setCvData(update);
+  };
+
+  // Notify parent of changes ONLY if they were internal
   useEffect(() => {
-    if (JSON.stringify(initialData) !== JSON.stringify(cvData)) {
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
+      if (onChange) {
+        onChange(cvData);
+      }
+    }
+  }, [cvData, onChange]);
+
+  // Update local state if initialData changes from outside
+  useEffect(() => {
+    const hasChanged = JSON.stringify(initialData) !== JSON.stringify(cvData);
+    if (hasChanged && !isInternalUpdate.current) {
       setCvData(initialData);
     }
   }, [initialData]);
 
-  // Notify parent of changes
-  useEffect(() => {
-    if (onChange) {
-      onChange(cvData);
-    }
-  }, [cvData, onChange]);
-
   // Sync email with logged-in user
   useEffect(() => {
     if (user?.email && cvData.personne.contact.email !== user.email) {
-      setCvData(prev => ({
-        ...prev,
+      const newData = {
+        ...cvData,
         personne: {
-          ...prev.personne,
-          contact: { ...prev.personne.contact, email: user.email! }
+          ...cvData.personne,
+          contact: { ...cvData.personne.contact, email: user.email! }
         }
-      }));
+      };
+      updateCvData(newData);
     }
   }, [user, cvData.personne.contact.email]);
 
@@ -125,7 +138,7 @@ export default function CVEditor({
           ...newExperiences[index], 
           details: optimizedText.split('\n').filter((l: string) => l.trim() !== "") 
         };
-        setCvData({ ...cvData, experiences: newExperiences });
+        updateCvData({ ...cvData, experiences: newExperiences });
 
         // Trigger shimmer effect
         setShimmerIndex(index);
@@ -143,7 +156,7 @@ export default function CVEditor({
 
     const newExperiences = [...cvData.experiences];
     newExperiences[index] = { ...newExperiences[index], details: originalDescriptions[index] };
-    setCvData({ ...cvData, experiences: newExperiences });
+    updateCvData({ ...cvData, experiences: newExperiences });
 
     const newOriginals = { ...originalDescriptions };
     delete newOriginals[index];
@@ -152,7 +165,7 @@ export default function CVEditor({
 
   // Helper functions for form updates
   const updatePersonne = (field: string, value: string) => {
-    setCvData({
+    updateCvData({
       ...cvData,
       personne: { ...cvData.personne, [field]: value }
     });
@@ -160,7 +173,7 @@ export default function CVEditor({
 
   const updateContact = (field: string, value: string) => {
     if (field === 'email' && user) return;
-    setCvData({
+    updateCvData({
       ...cvData,
       personne: {
         ...cvData.personne,
@@ -176,7 +189,7 @@ export default function CVEditor({
     } else {
       newExperiences[index] = { ...newExperiences[index], [field]: value } as Experience;
     }
-    setCvData({ ...cvData, experiences: newExperiences });
+    updateCvData({ ...cvData, experiences: newExperiences });
   };
 
   const addExperience = () => {
@@ -189,12 +202,12 @@ export default function CVEditor({
       competences_cles: [],
       details: []
     };
-    setCvData({ ...cvData, experiences: [newExp, ...cvData.experiences] });
+    updateCvData({ ...cvData, experiences: [newExp, ...cvData.experiences] });
   };
 
   const removeExperience = (index: number) => {
     const newExperiences = cvData.experiences.filter((_, i) => i !== index);
-    setCvData({ ...cvData, experiences: newExperiences });
+    updateCvData({ ...cvData, experiences: newExperiences });
   };
 
   const addCompetenceCle = (expIndex: number, point: string) => {
@@ -206,7 +219,7 @@ export default function CVEditor({
         ...newExperiences[expIndex], 
         competences_cles: [...currentPoints, point.trim()] 
       };
-      setCvData({ ...cvData, experiences: newExperiences });
+      updateCvData({ ...cvData, experiences: newExperiences });
     }
   };
 
@@ -216,13 +229,13 @@ export default function CVEditor({
       ...newExperiences[expIndex], 
       competences_cles: newExperiences[expIndex].competences_cles.filter((_, i) => i !== pointIndex)
     };
-    setCvData({ ...cvData, experiences: newExperiences });
+    updateCvData({ ...cvData, experiences: newExperiences });
   };
 
   const updateProjet = (index: number, field: keyof Projet, value: string) => {
     const newProjets = [...cvData.projets];
     newProjets[index] = { ...newProjets[index], [field]: value };
-    setCvData({ ...cvData, projets: newProjets });
+    updateCvData({ ...cvData, projets: newProjets });
   };
 
   const addProjet = () => {
@@ -232,18 +245,18 @@ export default function CVEditor({
       periode_debut: "",
       periode_fin: ""
     };
-    setCvData({ ...cvData, projets: [newProj, ...cvData.projets] });
+    updateCvData({ ...cvData, projets: [newProj, ...cvData.projets] });
   };
 
   const removeProjet = (index: number) => {
     const newProjets = cvData.projets.filter((_, i) => i !== index);
-    setCvData({ ...cvData, projets: newProjets });
+    updateCvData({ ...cvData, projets: newProjets });
   };
 
   const updateCertification = (index: number, field: keyof Certification, value: string) => {
     const newCerts = [...cvData.certifications];
     newCerts[index] = { ...newCerts[index], [field]: value };
-    setCvData({ ...cvData, certifications: newCerts });
+    updateCvData({ ...cvData, certifications: newCerts });
   };
 
   const addCertification = () => {
@@ -252,18 +265,18 @@ export default function CVEditor({
       score: "",
       date_obtention: ""
     };
-    setCvData({ ...cvData, certifications: [newCert, ...cvData.certifications] });
+    updateCvData({ ...cvData, certifications: [newCert, ...cvData.certifications] });
   };
 
   const removeCertification = (index: number) => {
     const newCerts = cvData.certifications.filter((_, i) => i !== index);
-    setCvData({ ...cvData, certifications: newCerts });
+    updateCvData({ ...cvData, certifications: newCerts });
   };
 
   const updateFormation = (index: number, field: keyof Formation, value: string) => {
     const newFormation = [...cvData.formation];
     newFormation[index] = { ...newFormation[index], [field]: value };
-    setCvData({ ...cvData, formation: newFormation });
+    updateCvData({ ...cvData, formation: newFormation });
   };
 
   const addFormation = () => {
@@ -272,17 +285,17 @@ export default function CVEditor({
       etablissement: "",
       annee: ""
     };
-    setCvData({ ...cvData, formation: [newForm, ...cvData.formation] });
+    updateCvData({ ...cvData, formation: [newForm, ...cvData.formation] });
   };
 
   const removeFormation = (index: number) => {
     const newFormation = cvData.formation.filter((_, i) => i !== index);
-    setCvData({ ...cvData, formation: newFormation });
+    updateCvData({ ...cvData, formation: newFormation });
   };
 
   const updateSkills = (category: 'soft_skills' | 'hard_skills' | 'langues', value: string) => {
     const skillsArray = value.split(',').map(s => s.trim()).filter(s => s !== "");
-    setCvData({
+    updateCvData({
       ...cvData,
       competences: { ...cvData.competences, [category]: skillsArray }
     });
@@ -314,11 +327,23 @@ export default function CVEditor({
         <div className="space-y-8">
           {/* Personne & Contact */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                <User className="w-5 h-5" />
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                  <User className="w-5 h-5" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-slate-900">Informations Personnelles</h2>
+                  {cvData.isMaster && (
+                    <div className="group relative">
+                      <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
+                      <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
+                        CV de Référence
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <h2 className="text-lg font-bold text-slate-900">Informations Personnelles</h2>
             </div>
 
             <div className="flex justify-center">
@@ -327,14 +352,19 @@ export default function CVEditor({
                 nom={cvData.personne.nom}
                 profilePicture={cvData.profilePicture}
                 transform={cvData.profilePictureTransform}
-                onChange={(base64) => setCvData(prev => ({ ...prev, profilePicture: base64 }))}
-                onTransformChange={(transform) => setCvData(prev => ({
-                  ...prev,
+                onUpdate={(base64, transform) => updateCvData(prev => ({ 
+                  ...prev, 
+                  profilePicture: base64,
                   profilePictureTransform: transform
                 }))}
-                disabled={isReadOnly}
+                disabled={isReadOnly || !cvData.isMaster}
               />
             </div>
+            {!cvData.isMaster && (
+              <p className="text-[10px] text-slate-400 text-center italic">
+                La photo du CV de référence est utilisée pour toutes les versions.
+              </p>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -437,9 +467,9 @@ export default function CVEditor({
               <h2 className="text-lg font-bold text-slate-900">Résumé</h2>
             </div>
             <textarea 
-              value={cvData.resume}
-              onChange={(e) => setCvData({...cvData, resume: e.target.value})}
-              disabled={isReadOnly}
+                value={cvData.resume}
+                onChange={(e) => updateCvData(prev => ({ ...prev, resume: e.target.value }))}
+                disabled={isReadOnly}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[120px] text-black leading-relaxed disabled:opacity-60"
             />
           </section>

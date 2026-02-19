@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { CVData, Experience, Formation, Projet, Certification } from "@/types/cv";
+import { sortExperiences } from "@/lib/utils";
 import { 
   Save, 
   X,
@@ -18,7 +19,8 @@ import {
 import CVEditor from "@/components/CVEditor";
 import CVDisplay from "@/components/CVDisplay";
 import ToolbarSettings from "@/components/ToolbarSettings";
-import OptimizationAssistant from "@/components/OptimizationAssistant";
+import RebuildAssistant from "@/components/RebuildAssistant";
+import OfferOptimizer from "@/components/OfferOptimizer";
 import ShareModal from "@/components/ShareModal";
 
 export default function EditCVPage() {
@@ -40,7 +42,8 @@ function EditCVContent() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isOptimizationAssistantOpen, setIsOptimizationAssistantOpen] = useState(false);
+  const [isRebuildAssistantOpen, setIsRebuildAssistantOpen] = useState(false);
+  const [isOfferOptimizerOpen, setIsOfferOptimizerOpen] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -123,11 +126,11 @@ function EditCVContent() {
           profilePicture: parsed.profilePicture || parsed.personne?.profilePicture || "",
           profilePictureTransform: parsed.profilePictureTransform || parsed.personne?.profilePictureTransform,
           resume: parsed.resume || "",
-          experiences: (Array.isArray(parsed.experiences) ? parsed.experiences : []).map((exp: Experience) => ({
+          experiences: sortExperiences((Array.isArray(parsed.experiences) ? parsed.experiences : []).map((exp: Experience) => ({
             ...exp,
             periode_debut: formatParsedDate(exp.periode_debut),
             periode_fin: formatParsedDate(exp.periode_fin)
-          })),
+          }))),
           projets: (Array.isArray(parsed.projets) ? parsed.projets : []).map((proj: Projet) => ({
             ...proj,
             periode_debut: formatParsedDate(proj.periode_debut),
@@ -147,7 +150,8 @@ function EditCVContent() {
             date_obtention: formatParsedDate(cert.date_obtention)
           })),
           visible: parsed.visible ?? true,
-          availability: parsed.availability || 'immediate'
+          availability: parsed.availability || 'immediate',
+          isMaster: true
         };
         
         setCvData(normalizedData);
@@ -205,6 +209,9 @@ function EditCVContent() {
         slug: currentSlug,
         visible: visible ?? true,
         availability: availability || 'immediate',
+        isMain: true,
+        cvName: "main",
+        offer: updatedData.jobOffer,
         data: cvContent
       };
 
@@ -234,7 +241,7 @@ function EditCVContent() {
       localStorage.removeItem("pending-cv-data");
       
       setTimeout(() => {
-        router.push(`/cv/${slug}`);
+        router.push(`/mon-cv/main/edit`);
       }, 1500);
     } catch (error) {
       console.error("Erreur:", error);
@@ -269,6 +276,10 @@ function EditCVContent() {
           <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none lg:hidden" />
           {/* Right Gradient Fade */}
           <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none lg:hidden" />
+
+          <button onClick={() => router.push('/mon-cv')} className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 transition-colors font-medium text-sm shrink-0">
+            <X className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Dashboard</span>
+          </button>
 
           <div className="flex items-center justify-between w-full min-w-max lg:min-w-0 gap-2 sm:gap-4">
             {/* Zone Gauche : Statut & Visibilité */}
@@ -314,7 +325,7 @@ function EditCVContent() {
               {/* AI Button */}
               {!showPreview && (
                 <button
-                  onClick={() => handleProtectedAction(() => setIsOptimizationAssistantOpen(true))}
+                  onClick={() => handleProtectedAction(() => setIsRebuildAssistantOpen(true))}
                   className="h-10 flex items-center gap-2 px-4 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all text-sm font-medium group relative flex-shrink-0"
                   title="Reconstruire tout mon CV avec l'IA"
                 >
@@ -412,13 +423,26 @@ function EditCVContent() {
         />
       )}
 
-      {/* Optimization Assistant Modal */}
+      {/* Rebuild Assistant Modal */}
       {cvData && (
-        <OptimizationAssistant 
-          isOpen={isOptimizationAssistantOpen}
-          onClose={() => setIsOptimizationAssistantOpen(false)}
+        <RebuildAssistant 
+          isOpen={isRebuildAssistantOpen}
+          onClose={() => setIsRebuildAssistantOpen(false)}
           cvData={cvData}
           onSuccess={(optimizedData) => {
+            setCvData(optimizedData);
+            setNotification({ message: "CV reconstruit avec succès !", type: 'success' });
+          }}
+        />
+      )}
+
+      {/* Offer Optimizer Modal */}
+      {cvData && (
+        <OfferOptimizer 
+          isOpen={isOfferOptimizerOpen}
+          onClose={() => setIsOfferOptimizerOpen(false)}
+          cvData={cvData}
+          onSuccess={(optimizedData, saveAsNew) => {
             setCvData(optimizedData);
             setNotification({ message: "CV optimisé avec succès !", type: 'success' });
           }}

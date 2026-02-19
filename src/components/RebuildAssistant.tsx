@@ -22,6 +22,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { CVData } from "@/types/cv";
+import { sortExperiences } from "@/lib/utils";
 
 interface OptimizationAssistantProps {
   isOpen: boolean;
@@ -85,13 +86,20 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
         throw new Error("L'URL d'optimisation globale n'est pas configurée.");
       }
       
+      // 1. Extraction : Sauvegarder l'image actuelle
+      const savedImage = cvData.profilePicture;
+      const savedTransform = cvData.profilePictureTransform;
+
+      // 2. Appel API : Envoyer les données sans l'image
+      const { profilePicture, profilePictureTransform, ...cvWithoutImage } = cvData;
+
       const response = await fetch(optimizeUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          cv: cvData,
+          cv: cvWithoutImage,
           optimization_goals: formData
         }),
       });
@@ -103,7 +111,6 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
       const result = await response.json();
       
       // Normalisation de la réponse pour extraire les données du CV
-      // Gère les formats : [ { output: { ... } } ], { data: { ... } }, ou { ... }
       const rawData = Array.isArray(result) ? result[0] : result;
       const content = rawData.output || rawData.data || rawData;
 
@@ -111,7 +118,15 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
         throw new Error("Le format de réponse de l'IA est invalide.");
       }
 
-      onSuccess(content);
+      // 3. Fusion (Merge) : Réinjecter l'image sauvegardée
+      const mergedData = {
+        ...content,
+        experiences: sortExperiences(Array.isArray(content.experiences) ? content.experiences : []),
+        profilePicture: savedImage,
+        profilePictureTransform: savedTransform
+      };
+
+      onSuccess(mergedData);
       onClose();
     } catch (err) {
       console.error("Optimization error:", err);

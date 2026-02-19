@@ -8,11 +8,20 @@ import { AVAILABILITY_CONFIG } from "./AvailabilityBadge";
 interface AvailabilitySelectorProps {
   initialStatus?: AvailabilityStatus;
   email: string;
+  isMain?: boolean;
+  cvName?: string;
   onUpdate?: (status: AvailabilityStatus) => void;
   variant?: 'default' | 'compact';
 }
 
-export default function AvailabilitySelector({ initialStatus, email, onUpdate, variant = 'default' }: AvailabilitySelectorProps) {
+export default function AvailabilitySelector({ 
+  initialStatus, 
+  email, 
+  isMain = true,
+  cvName = "main",
+  onUpdate, 
+  variant = 'default' 
+}: AvailabilitySelectorProps) {
   const [status, setStatus] = useState<AvailabilityStatus | undefined>(initialStatus);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +65,9 @@ export default function AvailabilitySelector({ initialStatus, email, onUpdate, v
         },
         body: JSON.stringify({ 
           email, 
-          availability: newStatus 
+          availability: newStatus,
+          isMain,
+          cvName
         }),
       });
 
