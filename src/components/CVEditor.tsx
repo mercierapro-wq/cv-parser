@@ -486,6 +486,13 @@ SkillBadgeList.displayName = "SkillBadgeList";
 
 // --- Main Component ---
 
+interface CVEditorProps {
+  initialData: CVData;
+  isGuest?: boolean;
+  isReadOnly?: boolean;
+  onChange?: (data: CVData) => void;
+}
+
 export default function CVEditor({ 
   initialData, 
   isGuest = false, 
