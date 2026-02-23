@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo, useCallback } from "react";
 import { 
   Briefcase, 
   User, 
@@ -21,18 +21,470 @@ import {
   AlertCircle,
   Lock,
   LogIn,
-  Camera
+  Camera,
+  Globe
 } from "lucide-react";
 import { CVData, Experience, Formation, Projet, Certification } from "@/types/cv";
 import { useAuth } from "@/context/AuthContext";
 import { ProfilePictureManager } from "./ProfilePictureManager";
 
-interface CVEditorProps {
-  initialData: CVData;
-  isGuest?: boolean;
-  isReadOnly?: boolean;
-  onChange?: (data: CVData) => void;
+// --- Sub-components for Performance Optimization ---
+
+interface EditableFieldProps {
+  value: string;
+  onSave: (value: string) => void;
+  type?: "text" | "textarea" | "email" | "tel";
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
 }
+
+const EditableField = memo(({ 
+  value, 
+  onSave, 
+  type = "text", 
+  placeholder, 
+  className,
+  disabled,
+  autoFocus,
+  onKeyDown
+}: EditableFieldProps) => {
+  const [localValue, setLocalValue] = useState(value || "");
+  
+  useEffect(() => {
+    setLocalValue(value || "");
+  }, [value]);
+
+  const handleBlur = () => {
+    if (localValue !== (value || "")) {
+      onSave(localValue);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setLocalValue(e.target.value);
+  };
+
+  if (type === "textarea") {
+    return (
+      <textarea
+        value={localValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className={className}
+        disabled={disabled}
+        autoFocus={autoFocus}
+      />
+    );
+  }
+
+  return (
+    <input
+      type={type}
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={onKeyDown}
+      placeholder={placeholder}
+      className={className}
+      disabled={disabled}
+      autoFocus={autoFocus}
+    />
+  );
+});
+
+EditableField.displayName = "EditableField";
+
+interface ExperienceItemProps {
+  exp: Experience;
+  index: number;
+  isReadOnly: boolean;
+  optimizingIndex: number | null;
+  shimmerIndex: number | null;
+  hasOriginal: boolean;
+  onUpdate: (index: number, field: keyof Experience, value: string | string[]) => void;
+  onRemove: (index: number) => void;
+  onOptimize: (index: number) => void;
+  onUndo: (index: number) => void;
+  onAddSkill: (index: number, skill: string) => void;
+  onRemoveSkill: (index: number, skillIndex: number) => void;
+}
+
+const ExperienceItem = memo(({
+  exp,
+  index,
+  isReadOnly,
+  optimizingIndex,
+  shimmerIndex,
+  hasOriginal,
+  onUpdate,
+  onRemove,
+  onOptimize,
+  onUndo,
+  onAddSkill,
+  onRemoveSkill
+}: ExperienceItemProps) => {
+  return (
+    <div className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group">
+      {!isReadOnly && (
+        <button 
+          onClick={() => onRemove(index)}
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Poste</label>
+          <EditableField 
+            value={exp.poste}
+            onSave={(val) => onUpdate(index, 'poste', val)}
+            disabled={isReadOnly}
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Entreprise</label>
+          <EditableField 
+            value={exp.entreprise}
+            onSave={(val) => onUpdate(index, 'entreprise', val)}
+            disabled={isReadOnly}
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Début</label>
+          <EditableField 
+            value={exp.periode_debut}
+            onSave={(val) => onUpdate(index, 'periode_debut', val)}
+            placeholder="MM/AAAA"
+            disabled={isReadOnly}
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fin</label>
+          <EditableField 
+            value={exp.periode_fin}
+            onSave={(val) => onUpdate(index, 'periode_fin', val)}
+            placeholder="MM/AAAA"
+            disabled={isReadOnly}
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2 mb-4 relative">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description (Détails)</label>
+          {!isReadOnly && (
+            <div className="flex items-center gap-2">
+              {hasOriginal && (
+                <button
+                  onClick={() => onUndo(index)}
+                  className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+                  title="Annuler l'optimisation"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Annuler
+                </button>
+              )}
+              <button
+                onClick={() => onOptimize(index)}
+                disabled={optimizingIndex !== null}
+                className={`group relative flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                  optimizingIndex === index
+                    ? "bg-indigo-50 text-indigo-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 active:scale-95"
+                }`}
+                title="Améliorer cette description avec l'IA"
+              >
+                {optimizingIndex === index ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Sparkles className={`w-3 h-3 ${optimizingIndex === null ? "group-hover:animate-pulse" : ""}`} />
+                )}
+                {optimizingIndex === index ? "Optimisation..." : "Optimiser par IA"}
+              </button>
+            </div>
+          )}
+        </div>
+        <EditableField 
+          type="textarea"
+          value={exp.details.join('\n')}
+          onSave={(val) => onUpdate(index, 'details', val)}
+          disabled={optimizingIndex === index || isReadOnly}
+          placeholder="Un élément par ligne"
+          className={`w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px] text-black transition-all ${
+            shimmerIndex === index ? "animate-shimmer ring-2 ring-indigo-400 border-indigo-400" : ""
+          } ${optimizingIndex === index ? "opacity-50" : ""} disabled:opacity-60`}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Compétences clés</label>
+        <SkillBadgeList 
+          skills={exp.competences_cles || []}
+          onAdd={(skill) => onAddSkill(index, skill)}
+          onRemove={(sIndex) => onRemoveSkill(index, sIndex)}
+          isReadOnly={isReadOnly}
+          placeholder="Ajouter une compétence clé..."
+          variant="key"
+        />
+      </div>
+    </div>
+  );
+});
+
+ExperienceItem.displayName = "ExperienceItem";
+
+interface ProjectItemProps {
+  proj: Projet;
+  index: number;
+  isReadOnly: boolean;
+  onUpdate: (index: number, field: keyof Projet, value: string) => void;
+  onRemove: (index: number) => void;
+}
+
+const ProjectItem = memo(({ proj, index, isReadOnly, onUpdate, onRemove }: ProjectItemProps) => (
+  <div className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group space-y-4">
+    {!isReadOnly && (
+      <button 
+        onClick={() => onRemove(index)}
+        className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    )}
+    
+    <div className="space-y-2">
+      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nom du projet</label>
+      <EditableField 
+        value={proj.nom}
+        onSave={(val) => onUpdate(index, 'nom', val)}
+        disabled={isReadOnly}
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+      />
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Début</label>
+        <EditableField 
+          value={proj.periode_debut}
+          onSave={(val) => onUpdate(index, 'periode_debut', val)}
+          placeholder="MM/AAAA"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+        />
+      </div>
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fin</label>
+        <EditableField 
+          value={proj.periode_fin}
+          onSave={(val) => onUpdate(index, 'periode_fin', val)}
+          placeholder="MM/AAAA"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+        />
+      </div>
+    </div>
+
+    <div className="space-y-2">
+      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
+      <EditableField 
+        type="textarea"
+        value={proj.description}
+        onSave={(val) => onUpdate(index, 'description', val)}
+        disabled={isReadOnly}
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none min-h-[80px] text-black disabled:opacity-60"
+      />
+    </div>
+  </div>
+));
+
+ProjectItem.displayName = "ProjectItem";
+
+interface FormationItemProps {
+  form: Formation;
+  index: number;
+  isReadOnly: boolean;
+  onUpdate: (index: number, field: keyof Formation, value: string) => void;
+  onRemove: (index: number) => void;
+}
+
+const FormationItem = memo(({ form, index, isReadOnly, onUpdate, onRemove }: FormationItemProps) => (
+  <div className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group">
+    {!isReadOnly && (
+      <button 
+        onClick={() => onRemove(index)}
+        className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    )}
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="md:col-span-1 space-y-2">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Diplôme</label>
+        <EditableField 
+          value={form.diplome}
+          onSave={(val) => onUpdate(index, 'diplome', val)}
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+        />
+      </div>
+      <div className="md:col-span-1 space-y-2">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Établissement</label>
+        <EditableField 
+          value={form.etablissement}
+          onSave={(val) => onUpdate(index, 'etablissement', val)}
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+        />
+      </div>
+      <div className="md:col-span-1 space-y-2">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Année</label>
+        <EditableField 
+          value={form.annee}
+          onSave={(val) => onUpdate(index, 'annee', val)}
+          placeholder="AAAA"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
+        />
+      </div>
+    </div>
+  </div>
+));
+
+FormationItem.displayName = "FormationItem";
+
+interface CertificationItemProps {
+  cert: Certification;
+  index: number;
+  isReadOnly: boolean;
+  onUpdate: (index: number, field: keyof Certification, value: string) => void;
+  onRemove: (index: number) => void;
+}
+
+const CertificationItem = memo(({ cert, index, isReadOnly, onUpdate, onRemove }: CertificationItemProps) => (
+  <div className="relative p-4 bg-slate-50 rounded-xl border border-slate-100 group space-y-3">
+    {!isReadOnly && (
+      <button 
+        onClick={() => onRemove(index)}
+        className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    )}
+    <div className="space-y-1">
+      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nom</label>
+      <EditableField 
+        value={cert.nom}
+        onSave={(val) => onUpdate(index, 'nom', val)}
+        disabled={isReadOnly}
+        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-60"
+      />
+    </div>
+    <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-1">
+        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score</label>
+        <EditableField 
+          value={cert.score}
+          onSave={(val) => onUpdate(index, 'score', val)}
+          disabled={isReadOnly}
+          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-60"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</label>
+        <EditableField 
+          value={cert.date_obtention}
+          onSave={(val) => onUpdate(index, 'date_obtention', val)}
+          placeholder="AAAA"
+          disabled={isReadOnly}
+          className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-60"
+        />
+      </div>
+    </div>
+  </div>
+));
+
+CertificationItem.displayName = "CertificationItem";
+
+interface SkillBadgeListProps {
+  skills: string[];
+  onAdd: (skill: string) => void;
+  onRemove: (index: number) => void;
+  isReadOnly: boolean;
+  placeholder?: string;
+  variant?: 'hard' | 'soft' | 'key' | 'lang';
+}
+
+const SkillBadgeList = memo(({ skills, onAdd, onRemove, isReadOnly, placeholder, variant = 'key' }: SkillBadgeListProps) => {
+  const colors = {
+    hard: "bg-emerald-50 text-emerald-700 border-emerald-100 hover:text-emerald-900",
+    soft: "bg-amber-50 text-amber-700 border-amber-100 hover:text-amber-900",
+    key: "bg-indigo-50 text-indigo-700 border-indigo-100 hover:text-indigo-900",
+    lang: "bg-cyan-50 text-cyan-700 border-cyan-100 hover:text-cyan-900"
+  };
+
+  const colorClass = colors[variant];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2 mb-2">
+        {skills.map((skill, index) => (
+          <span 
+            key={`skill-${index}`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${colorClass.split(' hover:')[0]}`}
+          >
+            {skill}
+            {!isReadOnly && (
+              <button 
+                onClick={() => onRemove(index)}
+                className={colorClass.split(' border ')[1]}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </span>
+        ))}
+      </div>
+      {!isReadOnly && (
+        <div className="flex gap-2">
+          <input 
+            type="text"
+            placeholder={`${placeholder || "Ajouter..."} (Entrée)`}
+            className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-black"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = (e.target as HTMLInputElement).value;
+                if (val.trim()) {
+                  onAdd(val.trim());
+                  (e.target as HTMLInputElement).value = '';
+                }
+              }
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+});
+
+SkillBadgeList.displayName = "SkillBadgeList";
+
+// --- Main Component ---
 
 export default function CVEditor({ 
   initialData, 
@@ -51,10 +503,10 @@ export default function CVEditor({
   const isInternalUpdate = useRef(false);
 
   // Helper to update local state and flag it as internal
-  const updateCvData = (update: CVData | ((prev: CVData) => CVData)) => {
+  const updateCvData = useCallback((update: CVData | ((prev: CVData) => CVData)) => {
     isInternalUpdate.current = true;
     setCvData(update);
-  };
+  }, []);
 
   // Notify parent of changes ONLY if they were internal
   useEffect(() => {
@@ -86,7 +538,7 @@ export default function CVEditor({
       };
       updateCvData(newData);
     }
-  }, [user, cvData.personne.contact.email]);
+  }, [user, cvData.personne.contact.email, updateCvData]);
 
   const handleProtectedAction = (action: () => void) => {
     if (user) {
@@ -97,7 +549,7 @@ export default function CVEditor({
     }
   };
 
-  const handleOptimizeDescription = async (index: number) => {
+  const handleOptimizeDescription = useCallback(async (index: number) => {
     handleProtectedAction(async () => {
       if (optimizingIndex !== null) return;
 
@@ -149,9 +601,9 @@ export default function CVEditor({
         setOptimizingIndex(null);
       }
     });
-  };
+  }, [cvData, optimizingIndex, updateCvData]);
 
-  const handleUndoOptimization = (index: number) => {
+  const handleUndoOptimization = useCallback((index: number) => {
     if (!originalDescriptions[index]) return;
 
     const newExperiences = [...cvData.experiences];
@@ -161,28 +613,28 @@ export default function CVEditor({
     const newOriginals = { ...originalDescriptions };
     delete newOriginals[index];
     setOriginalDescriptions(newOriginals);
-  };
+  }, [cvData, originalDescriptions, updateCvData]);
 
   // Helper functions for form updates
-  const updatePersonne = (field: string, value: string) => {
-    updateCvData({
-      ...cvData,
-      personne: { ...cvData.personne, [field]: value }
-    });
-  };
+  const updatePersonne = useCallback((field: string, value: string) => {
+    updateCvData((prev) => ({
+      ...prev,
+      personne: { ...prev.personne, [field]: value }
+    }));
+  }, [updateCvData]);
 
-  const updateContact = (field: string, value: string) => {
+  const updateContact = useCallback((field: string, value: string) => {
     if (field === 'email' && user) return;
-    updateCvData({
-      ...cvData,
+    updateCvData((prev) => ({
+      ...prev,
       personne: {
-        ...cvData.personne,
-        contact: { ...cvData.personne.contact, [field]: value }
+        ...prev.personne,
+        contact: { ...prev.personne.contact, [field]: value }
       }
-    });
-  };
+    }));
+  }, [user, updateCvData]);
 
-  const updateExperience = (index: number, field: keyof Experience, value: string | string[]) => {
+  const updateExperience = useCallback((index: number, field: keyof Experience, value: string | string[]) => {
     const newExperiences = [...cvData.experiences];
     if (field === 'details' && typeof value === 'string') {
       newExperiences[index] = { ...newExperiences[index], details: value.split('\n').filter(l => l.trim() !== "") };
@@ -190,10 +642,11 @@ export default function CVEditor({
       newExperiences[index] = { ...newExperiences[index], [field]: value } as Experience;
     }
     updateCvData({ ...cvData, experiences: newExperiences });
-  };
+  }, [cvData, updateCvData]);
 
   const addExperience = () => {
     const newExp: Experience = {
+      id: crypto.randomUUID(),
       poste: "",
       entreprise: "",
       periode_debut: "",
@@ -205,12 +658,12 @@ export default function CVEditor({
     updateCvData({ ...cvData, experiences: [newExp, ...cvData.experiences] });
   };
 
-  const removeExperience = (index: number) => {
+  const removeExperience = useCallback((index: number) => {
     const newExperiences = cvData.experiences.filter((_, i) => i !== index);
     updateCvData({ ...cvData, experiences: newExperiences });
-  };
+  }, [cvData, updateCvData]);
 
-  const addCompetenceCle = (expIndex: number, point: string) => {
+  const addCompetenceCle = useCallback((expIndex: number, point: string) => {
     if (!point.trim()) return;
     const newExperiences = [...cvData.experiences];
     const currentPoints = newExperiences[expIndex].competences_cles || [];
@@ -221,25 +674,26 @@ export default function CVEditor({
       };
       updateCvData({ ...cvData, experiences: newExperiences });
     }
-  };
+  }, [cvData, updateCvData]);
 
-  const removeCompetenceCle = (expIndex: number, pointIndex: number) => {
+  const removeCompetenceCle = useCallback((expIndex: number, pointIndex: number) => {
     const newExperiences = [...cvData.experiences];
     newExperiences[expIndex] = { 
       ...newExperiences[expIndex], 
       competences_cles: newExperiences[expIndex].competences_cles.filter((_, i) => i !== pointIndex)
     };
     updateCvData({ ...cvData, experiences: newExperiences });
-  };
+  }, [cvData, updateCvData]);
 
-  const updateProjet = (index: number, field: keyof Projet, value: string) => {
+  const updateProjet = useCallback((index: number, field: keyof Projet, value: string) => {
     const newProjets = [...cvData.projets];
     newProjets[index] = { ...newProjets[index], [field]: value };
     updateCvData({ ...cvData, projets: newProjets });
-  };
+  }, [cvData, updateCvData]);
 
   const addProjet = () => {
     const newProj: Projet = {
+      id: crypto.randomUUID(),
       nom: "",
       description: "",
       periode_debut: "",
@@ -248,19 +702,20 @@ export default function CVEditor({
     updateCvData({ ...cvData, projets: [newProj, ...cvData.projets] });
   };
 
-  const removeProjet = (index: number) => {
+  const removeProjet = useCallback((index: number) => {
     const newProjets = cvData.projets.filter((_, i) => i !== index);
     updateCvData({ ...cvData, projets: newProjets });
-  };
+  }, [cvData, updateCvData]);
 
-  const updateCertification = (index: number, field: keyof Certification, value: string) => {
+  const updateCertification = useCallback((index: number, field: keyof Certification, value: string) => {
     const newCerts = [...cvData.certifications];
     newCerts[index] = { ...newCerts[index], [field]: value };
     updateCvData({ ...cvData, certifications: newCerts });
-  };
+  }, [cvData, updateCvData]);
 
   const addCertification = () => {
     const newCert: Certification = {
+      id: crypto.randomUUID(),
       nom: "",
       score: "",
       date_obtention: ""
@@ -268,19 +723,20 @@ export default function CVEditor({
     updateCvData({ ...cvData, certifications: [newCert, ...cvData.certifications] });
   };
 
-  const removeCertification = (index: number) => {
+  const removeCertification = useCallback((index: number) => {
     const newCerts = cvData.certifications.filter((_, i) => i !== index);
     updateCvData({ ...cvData, certifications: newCerts });
-  };
+  }, [cvData, updateCvData]);
 
-  const updateFormation = (index: number, field: keyof Formation, value: string) => {
+  const updateFormation = useCallback((index: number, field: keyof Formation, value: string) => {
     const newFormation = [...cvData.formation];
     newFormation[index] = { ...newFormation[index], [field]: value };
     updateCvData({ ...cvData, formation: newFormation });
-  };
+  }, [cvData, updateCvData]);
 
   const addFormation = () => {
     const newForm: Formation = {
+      id: crypto.randomUUID(),
       diplome: "",
       etablissement: "",
       annee: ""
@@ -288,18 +744,28 @@ export default function CVEditor({
     updateCvData({ ...cvData, formation: [newForm, ...cvData.formation] });
   };
 
-  const removeFormation = (index: number) => {
+  const removeFormation = useCallback((index: number) => {
     const newFormation = cvData.formation.filter((_, i) => i !== index);
     updateCvData({ ...cvData, formation: newFormation });
-  };
+  }, [cvData, updateCvData]);
 
-  const updateSkills = (category: 'soft_skills' | 'hard_skills' | 'langues', value: string) => {
-    const skillsArray = value.split(',').map(s => s.trim()).filter(s => s !== "");
+  const addGlobalSkill = useCallback((category: 'soft_skills' | 'hard_skills' | 'langues', skill: string) => {
+    const currentSkills = cvData.competences[category] || [];
+    if (!currentSkills.includes(skill)) {
+      updateCvData({
+        ...cvData,
+        competences: { ...cvData.competences, [category]: [...currentSkills, skill] }
+      });
+    }
+  }, [cvData, updateCvData]);
+
+  const removeGlobalSkill = useCallback((category: 'soft_skills' | 'hard_skills' | 'langues', index: number) => {
+    const currentSkills = cvData.competences[category] || [];
     updateCvData({
       ...cvData,
-      competences: { ...cvData.competences, [category]: skillsArray }
+      competences: { ...cvData.competences, [category]: currentSkills.filter((_, i) => i !== index) }
     });
-  };
+  }, [cvData, updateCvData]);
 
   return (
     <div className="space-y-8">
@@ -369,20 +835,18 @@ export default function CVEditor({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Prénom</label>
-                <input 
-                  type="text" 
+                <EditableField 
                   value={cvData.personne.prenom}
-                  onChange={(e) => updatePersonne('prenom', e.target.value)}
+                  onSave={(val) => updatePersonne('prenom', val)}
                   disabled={isReadOnly}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-black disabled:opacity-60"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nom</label>
-                <input 
-                  type="text" 
+                <EditableField 
                   value={cvData.personne.nom}
-                  onChange={(e) => updatePersonne('nom', e.target.value)}
+                  onSave={(val) => updatePersonne('nom', val)}
                   disabled={isReadOnly}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-black disabled:opacity-60"
                 />
@@ -391,10 +855,9 @@ export default function CVEditor({
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Titre Professionnel</label>
-              <input 
-                type="text" 
+              <EditableField 
                 value={cvData.personne.titre_professionnel}
-                onChange={(e) => updatePersonne('titre_professionnel', e.target.value)}
+                onSave={(val) => updatePersonne('titre_professionnel', val)}
                 disabled={isReadOnly}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-black disabled:opacity-60"
               />
@@ -407,10 +870,10 @@ export default function CVEditor({
                   className="flex-1 relative group/email"
                   title={user ? "Ce champ est obligatoirement celui du profil connecté" : ""}
                 >
-                  <input 
-                    type="email" 
+                  <EditableField 
+                    type="email"
                     value={cvData.personne.contact.email}
-                    onChange={(e) => updateContact('email', e.target.value)}
+                    onSave={(val) => updateContact('email', val)}
                     placeholder="Email"
                     disabled={isReadOnly || !!user}
                     className="w-full bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black disabled:opacity-60"
@@ -424,10 +887,10 @@ export default function CVEditor({
               </div>
               <div className="flex items-center gap-3 text-slate-400">
                 <Phone className="w-4 h-4" />
-                <input 
-                  type="text" 
+                <EditableField 
+                  type="tel"
                   value={cvData.personne.contact.telephone}
-                  onChange={(e) => updateContact('telephone', e.target.value)}
+                  onSave={(val) => updateContact('telephone', val)}
                   placeholder="Téléphone"
                   disabled={isReadOnly}
                   className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black disabled:opacity-60"
@@ -435,10 +898,9 @@ export default function CVEditor({
               </div>
               <div className="flex items-center gap-3 text-slate-400">
                 <Linkedin className="w-4 h-4" />
-                <input 
-                  type="text" 
+                <EditableField 
                   value={cvData.personne.contact.linkedin}
-                  onChange={(e) => updateContact('linkedin', e.target.value)}
+                  onSave={(val) => updateContact('linkedin', val)}
                   placeholder="LinkedIn URL"
                   disabled={isReadOnly}
                   className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black disabled:opacity-60"
@@ -446,10 +908,9 @@ export default function CVEditor({
               </div>
               <div className="flex items-center gap-3 text-slate-400">
                 <MapPin className="w-4 h-4" />
-                <input 
-                  type="text" 
+                <EditableField 
                   value={cvData.personne.contact.ville}
-                  onChange={(e) => updateContact('ville', e.target.value)}
+                  onSave={(val) => updateContact('ville', val)}
                   placeholder="Ville, Pays"
                   disabled={isReadOnly}
                   className="flex-1 bg-transparent border-b border-slate-100 focus:border-indigo-500 outline-none py-1 text-black disabled:opacity-60"
@@ -466,9 +927,10 @@ export default function CVEditor({
               </div>
               <h2 className="text-lg font-bold text-slate-900">Résumé</h2>
             </div>
-            <textarea 
+            <EditableField 
+                type="textarea"
                 value={cvData.resume}
-                onChange={(e) => updateCvData(prev => ({ ...prev, resume: e.target.value }))}
+                onSave={(val) => updateCvData(prev => ({ ...prev, resume: val }))}
                 disabled={isReadOnly}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[120px] text-black leading-relaxed disabled:opacity-60"
             />
@@ -496,49 +958,14 @@ export default function CVEditor({
 
             <div className="space-y-4">
               {cvData.certifications?.map((cert, index) => (
-                <div key={index} className="relative p-4 bg-slate-50 rounded-xl border border-slate-100 group space-y-3">
-                  {!isReadOnly && (
-                    <button 
-                      onClick={() => removeCertification(index)}
-                      className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nom</label>
-                    <input 
-                      type="text" 
-                      value={cert.nom}
-                      onChange={(e) => updateCertification(index, 'nom', e.target.value)}
-                      disabled={isReadOnly}
-                      className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-60"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score</label>
-                      <input 
-                        type="text" 
-                        value={cert.score}
-                        onChange={(e) => updateCertification(index, 'score', e.target.value)}
-                        disabled={isReadOnly}
-                        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-60"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</label>
-                      <input 
-                        type="text" 
-                        value={cert.date_obtention}
-                        onChange={(e) => updateCertification(index, 'date_obtention', e.target.value)}
-                        placeholder="AAAA"
-                        disabled={isReadOnly}
-                        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-sm text-black outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-60"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <CertificationItem 
+                  key={cert.id || `cert-${index}`}
+                  cert={cert}
+                  index={index}
+                  isReadOnly={isReadOnly}
+                  onUpdate={updateCertification}
+                  onRemove={removeCertification}
+                />
               ))}
             </div>
           </section>
@@ -554,31 +981,36 @@ export default function CVEditor({
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hard Skills (séparés par des virgules)</label>
-                <textarea 
-                  value={cvData.competences.hard_skills.join(', ')}
-                  onChange={(e) => updateSkills('hard_skills', e.target.value)}
-                  disabled={isReadOnly}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[80px] text-black disabled:opacity-60"
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hard Skills</label>
+                <SkillBadgeList 
+                  skills={cvData.competences.hard_skills}
+                  onAdd={(skill) => addGlobalSkill('hard_skills', skill)}
+                  onRemove={(index) => removeGlobalSkill('hard_skills', index)}
+                  isReadOnly={isReadOnly}
+                  placeholder="Ajouter un hard skill..."
+                  variant="hard"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Soft Skills (séparés par des virgules)</label>
-                <textarea 
-                  value={cvData.competences.soft_skills.join(', ')}
-                  onChange={(e) => updateSkills('soft_skills', e.target.value)}
-                  disabled={isReadOnly}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[80px] text-black disabled:opacity-60"
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Soft Skills</label>
+                <SkillBadgeList 
+                  skills={cvData.competences.soft_skills}
+                  onAdd={(skill) => addGlobalSkill('soft_skills', skill)}
+                  onRemove={(index) => removeGlobalSkill('soft_skills', index)}
+                  isReadOnly={isReadOnly}
+                  placeholder="Ajouter un soft skill..."
+                  variant="soft"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Langues (séparées par des virgules)</label>
-                <input 
-                  type="text" 
-                  value={cvData.competences.langues.join(', ')}
-                  onChange={(e) => updateSkills('langues', e.target.value)}
-                  disabled={isReadOnly}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-black disabled:opacity-60"
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Langues</label>
+                <SkillBadgeList 
+                  skills={cvData.competences.langues}
+                  onAdd={(skill) => addGlobalSkill('langues', skill)}
+                  onRemove={(index) => removeGlobalSkill('langues', index)}
+                  isReadOnly={isReadOnly}
+                  placeholder="Ajouter une langue..."
+                  variant="lang"
                 />
               </div>
             </div>
@@ -609,153 +1041,21 @@ export default function CVEditor({
 
             <div className="space-y-8">
               {cvData.experiences.map((exp, index) => (
-                <div key={index} className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group">
-                  {!isReadOnly && (
-                    <button 
-                      onClick={() => removeExperience(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Poste</label>
-                      <input 
-                        type="text" 
-                        value={exp.poste}
-                        onChange={(e) => updateExperience(index, 'poste', e.target.value)}
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Entreprise</label>
-                      <input 
-                        type="text" 
-                        value={exp.entreprise}
-                        onChange={(e) => updateExperience(index, 'entreprise', e.target.value)}
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Début</label>
-                      <input 
-                        type="text" 
-                        value={exp.periode_debut}
-                        onChange={(e) => updateExperience(index, 'periode_debut', e.target.value)}
-                        placeholder="MM/AAAA"
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fin</label>
-                      <input 
-                        type="text" 
-                        value={exp.periode_fin}
-                        onChange={(e) => updateExperience(index, 'periode_fin', e.target.value)}
-                        placeholder="MM/AAAA"
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 mb-4 relative">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description (Détails)</label>
-                      {!isReadOnly && (
-                        <div className="flex items-center gap-2">
-                          {originalDescriptions[index] && (
-                            <button
-                              onClick={() => handleUndoOptimization(index)}
-                              className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-slate-500 hover:text-indigo-600 transition-colors"
-                              title="Annuler l'optimisation"
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                              Annuler
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleOptimizeDescription(index)}
-                            disabled={optimizingIndex !== null}
-                            className={`group relative flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                              optimizingIndex === index
-                                ? "bg-indigo-50 text-indigo-400 cursor-not-allowed"
-                                : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 active:scale-95"
-                            }`}
-                            title="Améliorer cette description avec l'IA"
-                          >
-                            {optimizingIndex === index ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Sparkles className={`w-3 h-3 ${optimizingIndex === null ? "group-hover:animate-pulse" : ""}`} />
-                            )}
-                            {optimizingIndex === index ? "Optimisation..." : "Optimiser par IA"}
-                            {!user && (
-                              <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[8px] font-black px-1 py-0.5 rounded-full shadow-sm border border-white flex items-center gap-0.5">
-                                PRO
-                              </div>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <textarea 
-                      value={exp.details.join('\n')}
-                      onChange={(e) => updateExperience(index, 'details', e.target.value)}
-                      disabled={optimizingIndex === index || isReadOnly}
-                      placeholder="Un élément par ligne"
-                      className={`w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px] text-black transition-all ${
-                        shimmerIndex === index ? "animate-shimmer ring-2 ring-indigo-400 border-indigo-400" : ""
-                      } ${optimizingIndex === index ? "opacity-50" : ""} disabled:opacity-60`}
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Compétences clés</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {exp.competences_cles?.map((point, pIndex) => (
-                        <span 
-                          key={pIndex}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold border border-indigo-100"
-                        >
-                          {point}
-                          {!isReadOnly && (
-                            <button 
-                              onClick={() => removeCompetenceCle(index, pIndex)}
-                              className="hover:text-indigo-900"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                    {!isReadOnly && (
-                      <div className="flex gap-2">
-                        <input 
-                          type="text"
-                          placeholder="Ajouter une compétence clé..."
-                          className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-black"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              addCompetenceCle(index, (e.target as HTMLInputElement).value);
-                              (e.target as HTMLInputElement).value = '';
-                            }
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ExperienceItem 
+                  key={exp.id || `exp-${index}`}
+                  exp={exp}
+                  index={index}
+                  isReadOnly={isReadOnly}
+                  optimizingIndex={optimizingIndex}
+                  shimmerIndex={shimmerIndex}
+                  hasOriginal={!!originalDescriptions[index]}
+                  onUpdate={updateExperience}
+                  onRemove={removeExperience}
+                  onOptimize={handleOptimizeDescription}
+                  onUndo={handleUndoOptimization}
+                  onAddSkill={addCompetenceCle}
+                  onRemoveSkill={removeCompetenceCle}
+                />
               ))}
             </div>
           </section>
@@ -782,62 +1082,14 @@ export default function CVEditor({
 
             <div className="space-y-6">
               {cvData.projets?.map((proj, index) => (
-                <div key={index} className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group space-y-4">
-                  {!isReadOnly && (
-                    <button 
-                      onClick={() => removeProjet(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                  
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nom du projet</label>
-                    <input 
-                      type="text" 
-                      value={proj.nom}
-                      onChange={(e) => updateProjet(index, 'nom', e.target.value)}
-                      disabled={isReadOnly}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Début</label>
-                      <input 
-                        type="text" 
-                        value={proj.periode_debut}
-                        onChange={(e) => updateProjet(index, 'periode_debut', e.target.value)}
-                        placeholder="MM/AAAA"
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fin</label>
-                      <input 
-                        type="text" 
-                        value={proj.periode_fin}
-                        onChange={(e) => updateProjet(index, 'periode_fin', e.target.value)}
-                        placeholder="MM/AAAA"
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
-                    <textarea 
-                      value={proj.description}
-                      onChange={(e) => updateProjet(index, 'description', e.target.value)}
-                      disabled={isReadOnly}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none min-h-[80px] text-black disabled:opacity-60"
-                    />
-                  </div>
-                </div>
+                <ProjectItem 
+                  key={proj.id || `proj-${index}`}
+                  proj={proj}
+                  index={index}
+                  isReadOnly={isReadOnly}
+                  onUpdate={updateProjet}
+                  onRemove={removeProjet}
+                />
               ))}
             </div>
           </section>
@@ -864,50 +1116,14 @@ export default function CVEditor({
 
             <div className="space-y-6">
               {cvData.formation.map((form, index) => (
-                <div key={index} className="relative p-6 bg-slate-50 rounded-xl border border-slate-100 group">
-                  {!isReadOnly && (
-                    <button 
-                      onClick={() => removeFormation(index)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="md:col-span-1 space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Diplôme</label>
-                      <input 
-                        type="text" 
-                        value={form.diplome}
-                        onChange={(e) => updateFormation(index, 'diplome', e.target.value)}
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                    <div className="md:col-span-1 space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Établissement</label>
-                      <input 
-                        type="text" 
-                        value={form.etablissement}
-                        onChange={(e) => updateFormation(index, 'etablissement', e.target.value)}
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                    <div className="md:col-span-1 space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Année</label>
-                      <input 
-                        type="text" 
-                        value={form.annee}
-                        onChange={(e) => updateFormation(index, 'annee', e.target.value)}
-                        placeholder="AAAA"
-                        disabled={isReadOnly}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-black disabled:opacity-60"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <FormationItem 
+                  key={form.id || `form-${index}`}
+                  form={form}
+                  index={index}
+                  isReadOnly={isReadOnly}
+                  onUpdate={updateFormation}
+                  onRemove={removeFormation}
+                />
               ))}
             </div>
           </section>

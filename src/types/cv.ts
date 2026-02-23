@@ -19,6 +19,7 @@ export interface ProfilePictureTransform {
 }
 
 export interface Experience {
+  id?: string;
   poste: string;
   entreprise: string;
   periode_debut: string;
@@ -29,6 +30,7 @@ export interface Experience {
 }
 
 export interface Projet {
+  id?: string;
   nom: string;
   description: string;
   periode_debut: string;
@@ -36,12 +38,14 @@ export interface Projet {
 }
 
 export interface Formation {
+  id?: string;
   diplome: string;
   etablissement: string;
   annee: string;
 }
 
 export interface Certification {
+  id?: string;
   nom: string;
   score: string;
   date_obtention: string;

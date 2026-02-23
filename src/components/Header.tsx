@@ -6,10 +6,12 @@ import { useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Home, FileText, BarChart3, Search } from "lucide-react";
 import LoginButton from "./LoginButton";
+import { useNavigation } from "@/context/NavigationContext";
 
 export default function Header() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { handleNavigation } = useNavigation();
   const isPrintMode = searchParams.get("print") === "true";
   const desktopInputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
@@ -21,7 +23,7 @@ export default function Header() {
     const inputRef = isMobile ? mobileInputRef : desktopInputRef;
     const value = inputRef.current?.value;
     if (value?.trim()) {
-      router.push(`/search?q=${encodeURIComponent(value.trim())}`);
+      handleNavigation(`/search?q=${encodeURIComponent(value.trim())}`, (url) => router.push(url));
     }
   };
 
@@ -30,7 +32,10 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 gap-4">
           {/* Logo / Left side */}
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+          <button 
+            onClick={() => handleNavigation('/', (url) => router.push(url))}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
+          >
             <Image
               src="/NodalCV_header.png"
               alt="NodalCV Logo"
@@ -39,7 +44,7 @@ export default function Header() {
               className="h-8 w-auto object-contain"
               priority
             />
-          </Link>
+          </button>
 
           {/* Search Bar - Persistent */}
           <div className="flex-1 max-w-md hidden md:block">
@@ -58,27 +63,27 @@ export default function Header() {
 
           {/* Navigation / Right side */}
           <nav className="flex items-center gap-4 sm:gap-6">
-            <Link 
-              href="/" 
+            <button 
+              onClick={() => handleNavigation('/', (url) => router.push(url))}
               className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
             >
               <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Accueil</span>
-            </Link>
-            <Link 
-              href="/mon-cv" 
+            </button>
+            <button 
+              onClick={() => handleNavigation('/mon-cv', (url) => router.push(url))}
               className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
             >
               <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Mon CV</span>
-            </Link>
-            <Link 
-              href="/statistiques" 
+            </button>
+            <button 
+              onClick={() => handleNavigation('/statistiques', (url) => router.push(url))}
               className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
             >
               <BarChart3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Statistiques</span>
-            </Link>
+            </button>
             <LoginButton />
           </nav>
         </div>

@@ -23,6 +23,8 @@ import OfferOptimizer from "@/components/OfferOptimizer";
 import ApplicationManagerModal from "@/components/ApplicationManagerModal";
 import ShareModal from "@/components/ShareModal";
 import DownloadPDFButton from "@/components/DownloadPDFButton";
+import UnsavedChangesModal from "@/components/UnsavedChangesModal";
+import { useNavigation } from "@/context/NavigationContext";
 
 export default function EditCVPage() {
   return (
@@ -41,6 +43,15 @@ function EditCVContent() {
   const params = useParams();
   const cvNameParam = params.cvName as string;
   const { user, loading: authLoading } = useAuth();
+  const { 
+    setIsDirty: setGlobalIsDirty, 
+    showUnsavedModal, 
+    setShowUnsavedModal, 
+    pendingUrl, 
+    setPendingUrl,
+    handleNavigation
+  } = useNavigation();
+  
   const [cvData, setCvData] = useState<CVData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,8 +68,38 @@ function EditCVContent() {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [lastSavedData, setLastSavedData] = useState<string | null>(null);
 
-  // Scroll to hide toolbar logic
+  // Track changes via deep comparison
+  useEffect(() => {
+    if (cvData && !lastSavedData && !isLoading) {
+      setLastSavedData(JSON.stringify(cvData));
+    }
+  }, [cvData, isLoading, lastSavedData]);
+
+  const isDirty = cvData && lastSavedData ? JSON.stringify(cvData) !== lastSavedData : false;
+
+  // Sync local isDirty with global context
+  useEffect(() => {
+    setGlobalIsDirty(isDirty);
+    return () => setGlobalIsDirty(false); // Reset on unmount
+  }, [isDirty, setGlobalIsDirty]);
+
+  const handleExitAttempt = (url: string) => {
+    handleNavigation(url, (targetUrl) => router.push(targetUrl));
+  };
+
+  // Browser-level prevent exit
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -292,6 +333,7 @@ function EditCVContent() {
 
       if (!response.ok) throw new Error("Erreur lors de l'enregistrement");
       
+      setLastSavedData(JSON.stringify(updatedData));
       setNotification({ message: "CV enregistré avec succès !", type: 'success' });
       
       // Update local state with the new slug if it changed
@@ -485,7 +527,7 @@ function EditCVContent() {
     <div className="min-h-screen bg-slate-50">
       <div className={`sticky top-0 z-[100] w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm transition-transform duration-300 ${isToolbarVisible ? "translate-y-0" : "-translate-y-full"}`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4">
-          <button onClick={() => router.push('/mon-cv')} className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 transition-colors font-medium text-sm shrink-0">
+          <button onClick={() => handleExitAttempt('/mon-cv')} className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 transition-colors font-medium text-sm shrink-0">
             <X className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Dashboard</span>
           </button>
 
@@ -593,7 +635,10 @@ function EditCVContent() {
                />
             </div>
           ) : (
-            <CVEditor initialData={cvData} onChange={setCvData} />
+            <CVEditor 
+              initialData={cvData} 
+              onChange={setCvData} 
+            />
           )}
         </div>
       </div>
@@ -613,6 +658,21 @@ function EditCVContent() {
         isGeneratingCoverLetter={isGeneratingCoverLetter}
         isFetchingOffer={isFetchingOffer}
         fetchedOffer={fetchedOffer}
+      />
+
+      <UnsavedChangesModal 
+        isOpen={showUnsavedModal}
+        onClose={() => setShowUnsavedModal(false)}
+        onDiscard={() => {
+          setLastSavedData(JSON.stringify(cvData)); // Reset dirty state by matching current data
+          setGlobalIsDirty(false);
+          setShowUnsavedModal(false);
+          if (pendingUrl) router.push(pendingUrl);
+        }}
+        onSave={async () => {
+          if (cvData) await handleSave(cvData);
+        }}
+        isSaving={isSaving}
       />
     </div>
   );

@@ -4,10 +4,13 @@ import React from 'react';
 import { Github, Linkedin } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useNavigation } from '@/context/NavigationContext';
 
 export default function Footer() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const { handleNavigation } = useNavigation();
   const isPrintMode = searchParams.get("print") === "true";
 
   if (isPrintMode) return null;
@@ -17,8 +20,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <a 
-              href="#" 
+            <button 
               onClick={(e) => {
                 e.preventDefault();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -29,8 +31,8 @@ export default function Footer() {
                 <Image 
                   src="/nodalforge_navbar.png" 
                   alt="NodalForge" 
-                  width={192}
-                  height={48}
+                  width={192} 
+                  height={48} 
                   className="object-contain object-left"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -38,7 +40,7 @@ export default function Footer() {
                   }}
                 />
               </div>
-            </a>
+            </button>
             <p className="text-slate-600 mb-4 max-w-md">
               Créateur de produits digitaux innovants pour simplifier votre quotidien.
             </p>
@@ -104,9 +106,12 @@ export default function Footer() {
             <h3 className="text-slate-900 font-bold mb-4">Légal</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/privacy" className="text-slate-600 hover:text-indigo-600 transition-colors text-sm font-medium">
+                <button 
+                  onClick={() => handleNavigation('/privacy', (url) => router.push(url))}
+                  className="text-slate-600 hover:text-indigo-600 transition-colors text-sm font-medium"
+                >
                   Confidentialité
-                </Link>
+                </button>
               </li>
             </ul>
           </div>
