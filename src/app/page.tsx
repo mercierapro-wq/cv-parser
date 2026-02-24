@@ -39,14 +39,9 @@ function HomeContent() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("action", "parse-cv"); // Ajout de l'action pour le proxy
 
-      const webhookUrl = process.env.NEXT_PUBLIC_PARSE_CV_URL;
-      
-      if (!webhookUrl) {
-        throw new Error("L'URL d'analyse de CV n'est pas configurée.");
-      }
-
-      const response = await fetch(webhookUrl, {
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
         body: formData,
       });

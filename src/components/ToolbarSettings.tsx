@@ -49,6 +49,7 @@ export default function ToolbarSettings({
             variant="compact"
             initialVisible={cvData.visible ?? true} 
             email={cvData.personne.contact.email}
+            cvId={cvData.id}
             isMain={cvData.isMaster}
             cvName={cvData.isMaster ? "main" : (cvData.optimizedFor || "Version optimisée")}
             onUpdate={(visible) => setCvData((prev) => prev ? { ...prev, visible } : null)}
@@ -58,6 +59,7 @@ export default function ToolbarSettings({
           variant="compact"
           initialStatus={cvData.availability}
           email={cvData.personne.contact.email}
+          cvId={cvData.id}
           isMain={cvData.isMaster}
           cvName={cvData.isMaster ? "main" : (cvData.optimizedFor || "Version optimisée")}
           onUpdate={(availability) => setCvData((prev) => prev ? { ...prev, availability } : null)}
@@ -83,6 +85,7 @@ export default function ToolbarSettings({
                   variant="compact"
                   initialVisible={cvData.visible ?? true} 
                   email={cvData.personne.contact.email}
+                  cvId={cvData.id}
                   isMain={cvData.isMaster}
                   cvName={cvData.isMaster ? "main" : (cvData.optimizedFor || "Version optimisée")}
                   onUpdate={(visible) => setCvData((prev) => prev ? { ...prev, visible } : null)}
@@ -95,6 +98,7 @@ export default function ToolbarSettings({
                 variant="compact"
                 initialStatus={cvData.availability}
                 email={cvData.personne.contact.email}
+                cvId={cvData.id}
                 isMain={cvData.isMaster}
                 cvName={cvData.isMaster ? "main" : (cvData.optimizedFor || "Version optimisée")}
                 onUpdate={(availability) => setCvData((prev) => prev ? { ...prev, availability } : null)}

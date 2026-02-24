@@ -88,13 +88,14 @@ export default function OfferOptimizer({ isOpen, onClose, cvData, onSuccess, exi
       }
 
       // 4. Appel via le proxy Next.js pour la sécurité
-      const response = await fetch("/api/cv/optimize", {
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
+          action: "optimize-by-offer",
           cv: cvWithoutImage,
           job_offer: jobOffer
         }),

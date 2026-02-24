@@ -143,13 +143,18 @@ function EditCVContent() {
           }
         }
 
-        const getCvUrl = process.env.NEXT_PUBLIC_GET_CV_URL;
-        if (!getCvUrl) throw new Error("URL non configurée");
+        const token = await user.getIdToken();
         
-        const response = await fetch(getCvUrl, {
+        const response = await fetch("/api/n8n-proxy", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email }),
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            action: "get-cv",
+            email: user.email 
+          }),
         });
 
         if (!response.ok) throw new Error("Erreur lors de la récupération");
@@ -235,17 +240,21 @@ function EditCVContent() {
 
   const handleOpenApplicationManager = async () => {
     setIsApplicationManagerOpen(true);
-    if (cvData?.isMaster || (fetchedOffer && cvData?.cover_letter) || !cvData?.id) return;
+    if (cvData?.isMaster || (fetchedOffer && cvData?.cover_letter) || !cvData?.id || !user) return;
 
     setIsFetchingOffer(true);
     try {
-      const getOfferUrl = process.env.NEXT_PUBLIC_GET_OFFER_URL;
-      if (!getOfferUrl) throw new Error("URL non configurée");
-
-      const response = await fetch(getOfferUrl, {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ _id: cvData.id }),
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          action: "get-offer",
+          _id: cvData.id 
+        }),
       });
 
       if (!response.ok) throw new Error("Erreur lors de la récupération de l'offre");
@@ -272,16 +281,18 @@ function EditCVContent() {
   };
 
   const handleUpdateTitle = async (newTitle: string) => {
-    if (!cvData?.id || !newTitle) return;
+    if (!cvData?.id || !newTitle || !user) return;
 
     try {
-      const updateUrl = process.env.NEXT_PUBLIC_UPDATE_CV_URL;
-      if (!updateUrl) throw new Error("URL de mise à jour non configurée");
-
-      const response = await fetch(updateUrl, {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
+          action: "update-cv",
           _id: cvData.id,
           cvName: newTitle
         }),
@@ -300,9 +311,7 @@ function EditCVContent() {
     if (!updatedData || !user) return;
     setIsSaving(true);
     try {
-      const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL;
-      if (!insertUrl) throw new Error("URL non configurée");
-
+      const token = await user.getIdToken();
       const { visible, availability, slug: currentSlug, profilePicture, profilePictureTransform, ...cvContent } = updatedData;
       
       if (cvContent.personne) {
@@ -311,6 +320,7 @@ function EditCVContent() {
       }
 
       const payload = {
+        action: "insert-cv",
         email: user.email,
         nom: updatedData.personne.nom,
         prenom: updatedData.personne.prenom,
@@ -325,9 +335,12 @@ function EditCVContent() {
         data: cvContent
       };
 
-      const response = await fetch(insertUrl, {
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(payload),
       });
 
@@ -351,7 +364,7 @@ function EditCVContent() {
   };
 
   const handleGenerateCoverLetter = async () => {
-    if (!cvData) return;
+    if (!cvData || !user) return;
 
     if (!cvData.jobOffer) {
       setNotification({ message: "L'offre d'emploi est manquante pour générer la lettre", type: 'error' });
@@ -360,15 +373,17 @@ function EditCVContent() {
     
     setIsGeneratingCoverLetter(true);
     try {
-      const url = process.env.NEXT_PUBLIC_CREATE_COVER_LETTER_URL;
-      if (!url) throw new Error("URL non configurée");
-
+      const token = await user.getIdToken();
       const { profilePicture, profilePictureTransform, ...cvWithoutImage } = cvData;
 
-      const response = await fetch(url, {
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
+          action: "create-cover-letter",
           cv: cvWithoutImage,
           job_offer: cvData.jobOffer
         }),
@@ -393,16 +408,18 @@ function EditCVContent() {
   };
 
   const handleSaveOffer = async (offer: string) => {
-    if (!cvData?.id) return;
+    if (!cvData?.id || !user) return;
 
     try {
-      const url = process.env.NEXT_PUBLIC_SAVE_OFFER_URL;
-      if (!url) throw new Error("URL non configurée");
-
-      const response = await fetch(url, {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
+          action: "save-offer",
           _id: cvData.id,
           offer: offer
         }),
@@ -433,19 +450,21 @@ function EditCVContent() {
   };
 
   const handleSaveCoverLetter = async (currentText: string) => {
-    if (!cvData?.id) {
+    if (!cvData?.id || !user) {
       setNotification({ message: "ID du CV manquant", type: 'error' });
       return;
     }
 
     try {
-      const url = process.env.NEXT_PUBLIC_SAVE_COVER_LETTER_URL;
-      if (!url) throw new Error("URL non configurée");
-
-      const response = await fetch(url, {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
+          action: "save-cover-letter",
           _id: cvData.id,
           coverLetter: currentText
         }),

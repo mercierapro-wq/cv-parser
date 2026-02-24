@@ -33,6 +33,7 @@ import {
   isSameMonth
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useAuth } from '@/context/AuthContext';
 
 interface AnalyticsData {
   ownerEmail: string;
@@ -49,6 +50,7 @@ interface StatisticsProps {
 type Period = 'Jour' | 'Semaine' | 'Mois' | 'Année';
 
 export default function Statistics({ userEmail }: StatisticsProps) {
+  const { user } = useAuth();
   const [period, setPeriod] = useState<Period>('Semaine');
   const [data, setData] = useState<AnalyticsData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,13 +66,18 @@ export default function Statistics({ userEmail }: StatisticsProps) {
       lastFetchedEmailRef.current = userEmail;
       
       try {
-        const url = process.env.NEXT_PUBLIC_GET_ANALYTICS_URL;
-        if (!url) throw new Error("URL d'analytics non configurée");
-
-        const response = await fetch(url, {
+        const token = await user?.getIdToken();
+        
+        const response = await fetch("/api/n8n-proxy", {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: userEmail }),
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ 
+            action: "get-analytics",
+            email: userEmail 
+          }),
         });
 
         if (!response.ok) throw new Error('Erreur lors de la récupération des statistiques');

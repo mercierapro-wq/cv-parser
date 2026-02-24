@@ -21,6 +21,9 @@ export default function DownloadPDFButton({ slug, fileName, cvOwnerEmail }: Down
 
     setIsDownloading(true);
     try {
+      // Récupération du token si l'utilisateur est connecté (optionnel pour le PDF/Tracking)
+      const token = await user?.getIdToken();
+
       // Tracking
       if (cvOwnerEmail) {
         let viewerId = 'anonymous';
@@ -34,38 +37,35 @@ export default function DownloadPDFButton({ slug, fileName, cvOwnerEmail }: Down
           }
         }
 
-        const trackingUrl = process.env.NEXT_PUBLIC_TRACKING_URL;
-        if (trackingUrl) {
-          fetch(trackingUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              cvOwnerEmail,
-              type: 'download_pdf',
-              viewerId,
-              timestamp: new Date().toISOString(),
-              keyword: null
-            }),
-          }).catch(err => console.error("Tracking error:", err));
-        }
-      }
-
-      const webhookUrl = process.env.NEXT_PUBLIC_N8N_PDF_WEBHOOK_URL;
-      
-      if (!webhookUrl) {
-        throw new Error("Webhook URL for PDF generation is not configured");
+        fetch("/api/n8n-proxy", {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            action: 'tracking',
+            cvOwnerEmail,
+            type: 'download_pdf',
+            viewerId,
+            timestamp: new Date().toISOString(),
+            keyword: null
+          }),
+        }).catch(err => console.error("Tracking error:", err));
       }
 
       // Construct the URL to be printed
       const baseUrl = window.location.origin;
       const printUrl = `${baseUrl}/cv/${slug}?print=true`;
 
-      const response = await fetch(webhookUrl, {
+      const response = await fetch("/api/n8n-proxy", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
+          action: "generate-pdf",
           url: printUrl,
           fileName: `${fileName}.pdf`,
         }),

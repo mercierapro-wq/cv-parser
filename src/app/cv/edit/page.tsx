@@ -186,12 +186,10 @@ function EditCVContent() {
     setNotification(null);
 
     try {
-      const insertUrl = process.env.NEXT_PUBLIC_INSERT_CV_URL;
+      const token = await user?.getIdToken();
+      // On permet la publication même sans token (mode invité) si l'API le supporte, 
+      // mais ici on suit la logique de sécurité demandée.
       
-      if (!insertUrl) {
-        throw new Error("La variable d'environnement NEXT_PUBLIC_INSERT_CV_URL n'est pas définie");
-      }
-
       const { visible, availability, slug: currentSlug, profilePicture, profilePictureTransform, ...cvContent } = updatedData;
       
       // Nettoyage des anciennes données photo si présentes dans personne
@@ -201,6 +199,7 @@ function EditCVContent() {
       }
 
       const payload = {
+        action: "insert-cv",
         email: updatedData.personne.contact.email,
         nom: updatedData.personne.nom,
         prenom: updatedData.personne.prenom,
@@ -215,10 +214,11 @@ function EditCVContent() {
         data: cvContent
       };
 
-      const response = await fetch(insertUrl, {
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
         body: JSON.stringify(payload),
       });

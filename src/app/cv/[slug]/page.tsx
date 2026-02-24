@@ -25,6 +25,7 @@ async function getCVData(slug: string): Promise<CVData | null> {
       cache: 'no-store',
       headers: {
         'Accept': 'application/json',
+        'Authorization': process.env.N8N_SECRET_KEY || ""
       }
     });
 

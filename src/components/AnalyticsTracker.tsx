@@ -42,20 +42,18 @@ export default function AnalyticsTracker({ cvOwnerEmail }: AnalyticsTrackerProps
         return;
       }
 
-      // 3. Appel API
-      const trackingUrl = process.env.NEXT_PUBLIC_TRACKING_URL;
-      if (!trackingUrl) {
-        console.warn('NEXT_PUBLIC_TRACKING_URL is not defined');
-        return;
-      }
-
+      // 3. Appel API via le proxy sécurisé
       try {
-        const response = await fetch(trackingUrl, {
+        const token = await user?.getIdToken();
+
+        const response = await fetch("/api/n8n-proxy", {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
           body: JSON.stringify({
+            action: 'tracking',
             cvOwnerEmail,
             viewerId,
             type: 'view',

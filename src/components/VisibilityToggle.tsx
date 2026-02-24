@@ -6,6 +6,7 @@ import { Shield, Loader2 } from "lucide-react";
 interface VisibilityToggleProps {
   initialVisible: boolean;
   email: string;
+  cvId?: string;
   isMain?: boolean;
   cvName?: string;
   onUpdate?: (visible: boolean) => void;
@@ -15,6 +16,7 @@ interface VisibilityToggleProps {
 export default function VisibilityToggle({ 
   initialVisible, 
   email, 
+  cvId,
   isMain = true,
   cvName = "main",
   onUpdate, 
@@ -34,25 +36,22 @@ export default function VisibilityToggle({
     setNotification(null);
     
     try {
-      // Appel de l'endpoint update_cv avec le nouvel état de visibilité
-      const updateUrl = process.env.NEXT_PUBLIC_UPDATE_CV_URL;
-      
-      if (!updateUrl) {
-        console.warn("NEXT_PUBLIC_UPDATE_CV_URL n'est pas défini, repli sur INSERT_CV_URL");
+      const { auth: firebaseAuth } = await import("@/lib/firebase");
+      const token = await firebaseAuth.currentUser?.getIdToken();
+
+      if (!token) {
+        throw new Error("Session expirée");
       }
 
-      const finalUrl = updateUrl || process.env.NEXT_PUBLIC_INSERT_CV_URL;
-
-      if (!finalUrl) {
-        throw new Error("Aucun endpoint de mise à jour configuré");
-      }
-
-      const response = await fetch(finalUrl, {
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ 
+          action: "update-cv",
+          _id: cvId,
           email, 
           visible: newValue,
           isMain,

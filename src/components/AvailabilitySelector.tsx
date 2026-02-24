@@ -8,6 +8,7 @@ import { AVAILABILITY_CONFIG } from "./AvailabilityBadge";
 interface AvailabilitySelectorProps {
   initialStatus?: AvailabilityStatus;
   email: string;
+  cvId?: string;
   isMain?: boolean;
   cvName?: string;
   onUpdate?: (status: AvailabilityStatus) => void;
@@ -17,6 +18,7 @@ interface AvailabilitySelectorProps {
 export default function AvailabilitySelector({ 
   initialStatus, 
   email, 
+  cvId,
   isMain = true,
   cvName = "main",
   onUpdate, 
@@ -52,18 +54,22 @@ export default function AvailabilitySelector({
     setNotification(null);
 
     try {
-      const updateUrl = process.env.NEXT_PUBLIC_UPDATE_CV_URL || process.env.NEXT_PUBLIC_INSERT_CV_URL;
-      
-      if (!updateUrl) {
-        throw new Error("Endpoint non configuré");
+      const { auth: firebaseAuth } = await import("@/lib/firebase");
+      const token = await firebaseAuth.currentUser?.getIdToken();
+
+      if (!token) {
+        throw new Error("Session expirée");
       }
 
-      const response = await fetch(updateUrl, {
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ 
+          action: "update-cv",
+          _id: cvId,
           email, 
           availability: newStatus,
           isMain,

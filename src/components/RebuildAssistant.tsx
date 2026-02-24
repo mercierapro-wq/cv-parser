@@ -80,25 +80,30 @@ export default function OptimizationAssistant({ isOpen, onClose, cvData, onSucce
     setError(null);
 
     try {
-      const optimizeUrl = process.env.NEXT_PUBLIC_OPTIMIZE_CV_URL;
-      
-      if (!optimizeUrl) {
-        throw new Error("L'URL d'optimisation globale n'est pas configurée.");
-      }
-      
       // 1. Extraction : Sauvegarder l'image actuelle
       const savedImage = cvData.profilePicture;
       const savedTransform = cvData.profilePictureTransform;
 
-      // 2. Appel API : Envoyer les données sans l'image
+      // 2. Préparation des données : Envoyer les données sans l'image
       const { profilePicture, profilePictureTransform, ...cvWithoutImage } = cvData;
 
-      const response = await fetch(optimizeUrl, {
+      // 3. Récupération du Token Firebase
+      const { auth: firebaseAuth } = await import("@/lib/firebase");
+      const token = await firebaseAuth.currentUser?.getIdToken();
+
+      if (!token) {
+        throw new Error("Session expirée. Veuillez vous reconnecter.");
+      }
+
+      // 4. Appel via le proxy Next.js pour la sécurité
+      const response = await fetch("/api/n8n-proxy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
+          action: "optimize-cv",
           cv: cvWithoutImage,
           optimization_goals: formData
         }),

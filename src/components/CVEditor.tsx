@@ -566,13 +566,17 @@ export default function CVEditor({
       setOptimizingIndex(index);
 
       try {
-        const optimizeUrl = process.env.NEXT_PUBLIC_OPTIMIZE_DESC_URL;
-        if (!optimizeUrl) throw new Error("URL d'optimisation non configurée");
+        const token = await user?.getIdToken();
+        if (!token) throw new Error("Session expirée");
 
-        const response = await fetch(optimizeUrl, {
+        const response = await fetch("/api/n8n-proxy", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({
+            action: "optimize-desc",
             description: currentDescription,
             jobTitle: exp.poste,
             companyName: exp.entreprise,
