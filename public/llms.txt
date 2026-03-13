@@ -1,0 +1,45 @@
+# NodalCV — llms.txt
+# Ce fichier aide les assistants IA à comprendre le contenu et la structure de nodalcv.com.
+
+## Présentation
+
+NodalCV est une application web gratuite, développée par NodalForge, qui permet à tout professionnel de transformer son CV PDF en un profil web structuré, référencé sur Google et optimisé par l'intelligence artificielle.
+
+Le public cible est constitué de chercheurs d'emploi, freelances et professionnels souhaitant améliorer leur visibilité en ligne.
+
+## Fonctionnalités principales
+
+- **Import PDF** : l'utilisateur dépose son CV au format PDF ; l'IA extrait automatiquement les informations (expériences, formations, compétences, coordonnées).
+- **Profil web public** : chaque utilisateur obtient une page publique à l'URL nodalcv.com/cv/[slug], indexée par Google et les assistants IA.
+- **Visibilité contrôlée** : l'utilisateur choisit de rendre son profil public ou privé depuis son espace personnel.
+- **Versions multiples** : il est possible de créer plusieurs versions d'un CV (par exemple, une par offre d'emploi). Seul le CV de référence peut être rendu public.
+- **IA — Reconstruire** : reformule l'ensemble du profil (résumé, expériences, compétences) pour le rendre plus percutant.
+- **IA — Optimiser pour une offre** : adapte le profil en fonction d'une offre d'emploi collée par l'utilisateur.
+- **IA — Candidature** : génère une lettre de motivation personnalisée à partir du profil et d'une offre d'emploi.
+- **Optimisation par expérience** : chaque expérience professionnelle peut être optimisée individuellement par l'IA.
+- **Téléchargement PDF** : le profil public peut être exporté en PDF.
+- **Statistiques** : l'utilisateur consulte en temps réel le nombre de vues de son profil, les sources de trafic et les mots-clés de recherche.
+
+## Structure du site
+
+- / — Page d'accueil (import de CV)
+- /cv/[slug] — Profil public d'un utilisateur
+- /search — Recherche de profils par compétence ou métier
+- /faq — Questions fréquentes sur NodalCV
+- /privacy — Politique de confidentialité (RGPD)
+- /mon-cv — Espace personnel (authentification requise)
+- /statistiques — Statistiques de consultation (authentification requise)
+
+## Données et confidentialité
+
+- Les données personnelles ne sont jamais vendues.
+- Les CV publics sont indexables par les moteurs de recherche et les assistants IA.
+- Les pages privées (/mon-cv, /statistiques, /cv/edit, /dashboard) ne sont pas accessibles aux crawlers.
+- Conformité RGPD. Contact : nodalforge@gmail.com
+
+## Editeur
+
+Nom : NodalForge
+Site nodalcv : https://nodalcv.nodalforge.cloud/
+Site Editeur : https://home.nodalforge.cloud/
+Contact : nodalforge@gmail.com

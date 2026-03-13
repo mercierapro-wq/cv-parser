@@ -9,22 +9,42 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://nodalcv.com';
   const sitemapDataUrl = process.env.NEXT_PUBLIC_SITEMAP_DATA_URL;
 
+  const staticPages: MetadataRoute.Sitemap = [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1,
+    },
+    {
+      url: `${baseUrl}/search`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/faq`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: new Date('2026-01-27'),
+      changeFrequency: 'yearly',
+      priority: 0.2,
+    },
+  ];
+
   if (!sitemapDataUrl) {
     console.error('NEXT_PUBLIC_SITEMAP_DATA_URL is not defined');
-    return [
-      {
-        url: baseUrl,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 1,
-      },
-    ];
+    return staticPages;
   }
 
   try {
     const response = await fetch(sitemapDataUrl, {
       method: 'GET',
-      cache: 'no-store',
+      next: { revalidate: 3600 },
     });
 
     if (!response.ok) {
@@ -32,46 +52,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     const data = await response.json();
-    
-    // On s'attend à un tableau d'objets contenant le slug
-    // Si la structure est similaire à celle du CV (tableau d'objets avec une propriété data)
-    let slugs: string[] = [];
-    
+
+    let items: SitemapItem[] = [];
+
     if (Array.isArray(data)) {
-      slugs = data.map((item: any) => item.slug || item.data?.slug).filter(Boolean);
+      items = data
+        .map((item: any) => ({
+          slug: item.slug || item.data?.slug,
+          updated_at: item.updated_at,
+        }))
+        .filter((item) => Boolean(item.slug));
     }
 
-    const profileEntries: MetadataRoute.Sitemap = slugs.map((slug) => ({
-      url: `${baseUrl}/cv/${slug}`,
-      lastModified: new Date(), // Idéalement, utiliser item.updated_at si disponible
+    const profileEntries: MetadataRoute.Sitemap = items.map((item) => ({
+      url: `${baseUrl}/cv/${item.slug}`,
+      lastModified: item.updated_at ? new Date(item.updated_at) : new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,
     }));
 
-    return [
-      {
-        url: baseUrl,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 1,
-      },
-      {
-        url: `${baseUrl}/search`,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 0.8,
-      },
-      ...profileEntries,
-    ];
+    return [...staticPages, ...profileEntries];
   } catch (error) {
     console.error('Error generating sitemap:', error);
-    return [
-      {
-        url: baseUrl,
-        lastModified: new Date(),
-        changeFrequency: 'daily',
-        priority: 1,
-      },
-    ];
+    return staticPages;
   }
 }

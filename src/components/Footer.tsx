@@ -94,9 +94,12 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-slate-600 hover:text-indigo-600 transition-colors text-sm font-medium">
-                  Documentation
-                </a>
+                <button
+                  onClick={() => handleNavigation('/faq', (url) => router.push(url))}
+                  className="text-slate-600 hover:text-indigo-600 transition-colors text-sm font-medium"
+                >
+                  FAQ
+                </button>
               </li>
             </ul>
           </div>

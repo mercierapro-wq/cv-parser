@@ -1,9 +1,19 @@
 import React from 'react';
 import { Metadata } from 'next';
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://nodalcv.com';
+
 export const metadata: Metadata = {
-  title: 'Politique de Confidentialité - NodalForge',
-  description: 'Politique de confidentialité et protection des données personnelles de l\'écosystème NodalForge.',
+  title: 'Politique de Confidentialité',
+  description:
+    'Politique de confidentialité et protection des données personnelles de NodalCV et de l\'écosystème NodalForge. RGPD, cookies, droits des utilisateurs.',
+  alternates: {
+    canonical: `${baseUrl}/privacy`,
+  },
+  robots: {
+    index: true,
+    follow: false,
+  },
 };
 
 export default function PrivacyPage() {

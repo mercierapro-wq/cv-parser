@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Home, FileText, BarChart3, Search } from "lucide-react";
+import { Home, FileText, BarChart3, Search, HelpCircle } from "lucide-react";
 import LoginButton from "./LoginButton";
 import { useNavigation } from "@/context/NavigationContext";
 
@@ -77,12 +77,19 @@ export default function Header() {
               <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Mon CV</span>
             </button>
-            <button 
+            <button
               onClick={() => handleNavigation('/statistiques', (url) => router.push(url))}
               className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
             >
               <BarChart3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Statistiques</span>
+            </button>
+            <button
+              onClick={() => handleNavigation('/faq', (url) => router.push(url))}
+              className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
+            >
+              <HelpCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">FAQ</span>
             </button>
             <LoginButton />
           </nav>
