@@ -15,6 +15,7 @@ import { CVData } from "@/types/cv";
 import { sortExperiences } from "@/lib/utils";
 import CVDisplay from "./CVDisplay";
 import CVEditor from "./CVEditor";
+import InterviewSimulator from "./InterviewSimulator";
 
 interface OfferOptimizerProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export default function OfferOptimizer({ isOpen, onClose, cvData, onSuccess, exi
   const [cvName, setCvName] = useState("");
   const [view, setView] = useState<'edit' | 'preview'>('preview');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showInterview, setShowInterview] = useState(false);
 
   const handleSaveAction = (asNew: boolean) => {
     setSaveError(null);
@@ -136,7 +138,7 @@ export default function OfferOptimizer({ isOpen, onClose, cvData, onSuccess, exi
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Sparkles className="w-5 h-5" /></div>
             <h2 className="text-xl font-bold text-slate-900">
-              {step === 'result' ? "Optimisation terminée !" : "Optimiser pour une offre"}
+              {step === 'result' ? "Candidature prête !" : "Nouvelle candidature"}
             </h2>
           </div>
           <div className="flex items-center gap-4">
@@ -208,7 +210,7 @@ export default function OfferOptimizer({ isOpen, onClose, cvData, onSuccess, exi
                         setCvName(e.target.value);
                         setSaveError(null);
                       }}
-                      placeholder="Donnez un titre à cette version (ex: Développeur React - Startup X)..."
+                      placeholder="Nommez cette candidature (ex: Développeur React - Startup X)..."
                       className="bg-transparent border-none outline-none text-sm font-bold text-slate-900 w-full"
                     />
                   </div>
@@ -223,6 +225,23 @@ export default function OfferOptimizer({ isOpen, onClose, cvData, onSuccess, exi
                     {saveError}
                   </div>
                 )}
+              </div>
+
+              {/* Interview practice banner */}
+              <div className="flex items-center justify-between gap-4 px-5 py-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-xl shrink-0">🎯</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-indigo-900 leading-tight">S&apos;entraîner à l&apos;entretien</p>
+                    <p className="text-xs text-indigo-500 font-medium mt-0.5">Simulez un entretien basé sur ce poste avec un recruteur IA</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowInterview(true)}
+                  className="shrink-0 flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md hover:shadow-indigo-200 transition-all"
+                >
+                  Démarrer
+                </button>
               </div>
 
               <div className="flex-1 bg-slate-50 rounded-3xl border border-slate-200 overflow-y-auto p-8">
@@ -243,6 +262,13 @@ export default function OfferOptimizer({ isOpen, onClose, cvData, onSuccess, exi
           )}
         </div>
       </div>
+
+      <InterviewSimulator
+        isOpen={showInterview}
+        onClose={() => setShowInterview(false)}
+        cvData={optimizedData ?? cvData}
+        jobOffer={jobOffer}
+      />
     </div>
   );
 }

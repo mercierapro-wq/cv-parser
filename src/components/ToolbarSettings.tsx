@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Settings, Share2, Briefcase, Sparkles } from "lucide-react";
+import { Settings, Share2, Sparkles } from "lucide-react";
 import VisibilityToggle from "./VisibilityToggle";
 import AvailabilitySelector from "./AvailabilitySelector";
 import DownloadPDFButton from "./DownloadPDFButton";
@@ -13,16 +13,14 @@ interface ToolbarSettingsProps {
   setCvData: React.Dispatch<React.SetStateAction<CVData | null>>;
   user: User | null;
   onShare?: () => void;
-  onOpenApplicationManager?: () => void;
   onRebuild?: () => void;
 }
 
-export default function ToolbarSettings({ 
-  cvData, 
-  setCvData, 
-  user, 
+export default function ToolbarSettings({
+  cvData,
+  setCvData,
+  user,
   onShare,
-  onOpenApplicationManager,
   onRebuild
 }: ToolbarSettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -105,33 +103,18 @@ export default function ToolbarSettings({
               />
             </div>
 
-            {onOpenApplicationManager && (
-              <div className="pt-2 border-t border-slate-100 space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Candidature</label>
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    onClick={() => {
-                      onOpenApplicationManager();
-                      setIsOpen(false);
-                    }}
-                    className="w-full h-10 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-all text-sm font-bold"
-                  >
-                    <Briefcase className="w-4 h-4" />
-                    Gérer ma candidature
-                  </button>
-                  {cvData.isMaster && onRebuild && (
-                    <button
-                      onClick={() => {
-                        onRebuild();
-                        setIsOpen(false);
-                      }}
-                      className="w-full h-10 flex items-center justify-center gap-2 bg-white text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-all text-sm font-bold"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      Reconstruire avec l&apos;IA
-                    </button>
-                  )}
-                </div>
+            {cvData.isMaster && onRebuild && (
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    onRebuild();
+                    setIsOpen(false);
+                  }}
+                  className="w-full h-10 flex items-center justify-center gap-2 bg-white text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-all text-sm font-bold"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Reconstruire avec l&apos;IA
+                </button>
               </div>
             )}
 

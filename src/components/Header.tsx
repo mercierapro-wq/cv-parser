@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Home, FileText, BarChart3, Search, HelpCircle } from "lucide-react";
+import { Home, FileText, BarChart3, Search, HelpCircle, Briefcase } from "lucide-react";
 import LoginButton from "./LoginButton";
 import { useNavigation } from "@/context/NavigationContext";
 
@@ -70,12 +70,19 @@ export default function Header() {
               <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Accueil</span>
             </button>
-            <button 
-              onClick={() => handleNavigation('/mon-cv', (url) => router.push(url))}
+            <button
+              onClick={() => handleNavigation('/mon-cv/main/edit', (url) => router.push(url))}
               className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
             >
               <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Mon CV</span>
+            </button>
+            <button
+              onClick={() => handleNavigation('/candidatures', (url) => router.push(url))}
+              className="flex items-center gap-2 text-sm sm:text-base font-bold text-slate-700 hover:text-indigo-600 transition-colors group"
+            >
+              <Briefcase className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Candidatures</span>
             </button>
             <button
               onClick={() => handleNavigation('/statistiques', (url) => router.push(url))}

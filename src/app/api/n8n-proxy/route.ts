@@ -18,6 +18,8 @@ const ENDPOINT_MAP: Record<string, string | undefined> = {
   "get-cv": process.env.NEXT_PUBLIC_GET_CV_URL,
   "generate-pdf": process.env.NEXT_PUBLIC_N8N_PDF_WEBHOOK_URL,
   "parse-cv": process.env.NEXT_PUBLIC_PARSE_CV_URL,
+  "generate-interview-questions": process.env.NEXT_PUBLIC_GENERATE_INTERVIEW_QUESTIONS_URL,
+  "evaluate-interview": process.env.NEXT_PUBLIC_EVALUATE_INTERVIEW_URL,
 };
 
 export async function POST(req: Request) {
@@ -54,7 +56,9 @@ export async function POST(req: Request) {
       "save-offer", 
       "optimize-by-offer",
       "get-analytics",
-      "get-cv"
+      "get-cv",
+      "generate-interview-questions",
+      "evaluate-interview"
     ];
 
     if (protectedActions.includes(action) && (!session || !session.user.email)) {
