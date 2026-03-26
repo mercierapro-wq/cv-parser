@@ -210,7 +210,6 @@ function EditCVContent() {
         availability: availability || 'immediate',
         isMain: true,
         cvName: "main",
-        offer: updatedData.jobOffer,
         data: cvContent
       };
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Send, CheckCircle2, ArrowUpRight, RotateCcw, ChevronRight, Minus, Maximize2, Minimize2 } from "lucide-react";
+import { X, Send, CheckCircle2, ArrowUpRight, RotateCcw, ChevronRight, Minus, Maximize2, Minimize2, History, ChevronLeft } from "lucide-react";
 import { CVData } from "@/types/cv";
 
 type InterviewType = "prequalification" | "technique" | "manager" | "rh";
-type Phase = "select" | "interview" | "debrief";
+type Phase = "select" | "interview" | "debrief" | "history";
 
 interface APIQuestion {
   id: number;
@@ -36,11 +36,20 @@ interface Debrief {
   conseil: string;
 }
 
+interface SavedInterview {
+  type: InterviewType;
+  messages: Message[];
+  debrief: Debrief;
+  date: string;
+}
+
 interface InterviewSimulatorProps {
   isOpen: boolean;
   onClose: () => void;
   cvData: CVData;
   jobOffer?: string;
+  /** ID du CV/candidature pour sauvegarder l'entretien dans l'offre associée */
+  cvId?: string;
   /** Incrémenter pour forcer l'ouverture du panneau (ex: bouton "Démarrer") */
   expandTrigger?: number;
   /** Ouvrir le panneau directement sans passer par la bulle */
@@ -201,6 +210,7 @@ export default function InterviewSimulator({
   onClose,
   cvData,
   jobOffer,
+  cvId,
   expandTrigger = 0,
   defaultExpanded = false,
 }: InterviewSimulatorProps) {
@@ -215,15 +225,45 @@ export default function InterviewSimulator({
   const [enlarged, setEnlarged] = useState(false);
   const [loadingType, setLoadingType] = useState<InterviewType | null>(null);
   const [loadedQuestions, setLoadedQuestions] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [interviews, setInterviews] = useState<SavedInterview[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedHistoryInterview, setSelectedHistoryInterview] = useState<SavedInterview | null>(null);
+  const [historyTab, setHistoryTab] = useState<"conversation" | "evaluation">("evaluation");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<Message[]>([]);
   const interviewTypeRef = useRef<InterviewType | null>(null);
+  const jobOfferRef = useRef<string | undefined>(jobOffer || cvData.jobOffer);
+  const prevCvIdRef = useRef<string | undefined>(cvId);
 
   // Sync refs
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { interviewTypeRef.current = interviewType; }, [interviewType]);
+  useEffect(() => { jobOfferRef.current = jobOffer || cvData.jobOffer; }, [jobOffer, cvData.jobOffer]);
+
+  // Reset quand l'offre change (sans fermer le panneau)
+  useEffect(() => {
+    if (prevCvIdRef.current === cvId) return;
+    prevCvIdRef.current = cvId;
+    setPhase("select");
+    setInterviewType(null);
+    setMessages([]);
+    setInput("");
+    setIsTyping(false);
+    setQuestionIndex(0);
+    setDebrief(null);
+    setLoadingType(null);
+    setLoadedQuestions([]);
+    setIsSaving(false);
+    setSaveStatus('idle');
+    setInterviews([]);
+    setLoadingHistory(false);
+    setSelectedHistoryInterview(null);
+    setHistoryTab("evaluation");
+  }, [cvId]);
 
   // Reset complet à la fermeture
   useEffect(() => {
@@ -239,6 +279,12 @@ export default function InterviewSimulator({
       setEnlarged(false);
       setLoadingType(null);
       setLoadedQuestions([]);
+      setIsSaving(false);
+      setSaveStatus('idle');
+      setInterviews([]);
+      setLoadingHistory(false);
+      setSelectedHistoryInterview(null);
+      setHistoryTab("evaluation");
     }
   }, [isOpen]);
 
@@ -284,7 +330,7 @@ export default function InterviewSimulator({
           body: JSON.stringify({
             action: "generate-interview-questions",
             cv: cvWithoutImage,
-            job_offer: jobOffer ?? "",
+            job_offer: jobOfferRef.current ?? "",
             interview_type: type,
           }),
         });
@@ -310,8 +356,48 @@ export default function InterviewSimulator({
       setQuestionIndex(1);
       setPhase("interview");
     },
-    [cvData, jobOffer]
+    [cvData]
   );
+
+  const saveInterview = useCallback(async (debriefData: Debrief) => {
+    if (!cvId || !interviewType) return;
+    setIsSaving(true);
+    setSaveStatus('idle');
+    try {
+      const { auth: firebaseAuth } = await import("@/lib/firebase");
+      const token = await firebaseAuth.currentUser?.getIdToken();
+      if (!token) throw new Error("Session expirée");
+
+      const response = await fetch("/api/n8n-proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "save-interview",
+          cvId,
+          interview: {
+            type: interviewType,
+            messages: messagesRef.current,
+            debrief: debriefData,
+            date: new Date().toISOString(),
+          },
+        }),
+      });
+
+      if (response.ok) {
+        setSaveStatus('saved');
+        setInterviews([]); // invalide le cache pour forcer un re-fetch à la prochaine ouverture
+      } else {
+        setSaveStatus('error');
+      }
+    } catch {
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [cvId, interviewType, messagesRef]);
 
   const evaluateInterview = useCallback(
     async (currentMessages: Message[]) => {
@@ -344,7 +430,7 @@ export default function InterviewSimulator({
           body: JSON.stringify({
             action: "evaluate-interview",
             cv: cvWithoutImage,
-            job_offer: jobOffer ?? "",
+            job_offer: jobOfferRef.current ?? "",
             interview_type: type,
             exchanges,
           }),
@@ -353,7 +439,7 @@ export default function InterviewSimulator({
         if (response.ok) {
           const data = await response.json();
           const result = Array.isArray(data) ? (data[0]?.output ?? data[0]) : data;
-          setDebrief({
+          const debriefData: Debrief = {
             score: result.score ?? 0,
             mention: result.mention ?? getMention(result.score ?? 0),
             synthese: result.synthese ?? "",
@@ -361,16 +447,20 @@ export default function InterviewSimulator({
             axes_amelioration: result.axes_amelioration ?? [],
             analyse_par_question: result.analyse_par_question ?? [],
             conseil: result.conseil ?? "",
-          });
+          };
+          setDebrief(debriefData);
+          saveInterview(debriefData);
           return;
         }
       } catch {
         // Fallback ci-dessous
       }
 
-      setDebrief(generateDebriefFallback(type));
+      const fallback = generateDebriefFallback(type);
+      setDebrief(fallback);
+      saveInterview(fallback);
     },
-    [cvData, jobOffer]
+    [cvData, saveInterview]
   );
 
   const sendMessage = useCallback(() => {
@@ -438,7 +528,36 @@ export default function InterviewSimulator({
     setLoadingType(null);
     setLoadedQuestions([]);
     setEnlarged(false);
+    setSaveStatus('idle');
   };
+
+  const openHistory = useCallback(async () => {
+    setPhase("history");
+    setSelectedHistoryInterview(null);
+    if (!cvId || interviews.length > 0) return;
+    setLoadingHistory(true);
+    try {
+      const { auth: firebaseAuth } = await import("@/lib/firebase");
+      const token = await firebaseAuth.currentUser?.getIdToken();
+      if (!token) return;
+      const response = await fetch("/api/n8n-proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ action: "get-interviews", cvId }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const list: SavedInterview[] = Array.isArray(data)
+          ? (data[0]?.interviews ?? [])
+          : (data.interviews ?? []);
+        setInterviews(list);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [cvId, interviews.length]);
 
   if (!isOpen) return null;
 
@@ -570,6 +689,16 @@ export default function InterviewSimulator({
                     );
                   })}
                 </div>
+
+                {cvId && (
+                  <button
+                    onClick={openHistory}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-slate-200 hover:border-indigo-200 transition-all"
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    Historique des entretiens
+                  </button>
+                )}
               </div>
             )}
 
@@ -758,14 +887,273 @@ export default function InterviewSimulator({
                   </div>
                 )}
 
-                {/* Restart */}
+                {/* Save status */}
+                {cvId && (
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] font-medium">
+                    {isSaving && (
+                      <>
+                        <div className="w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
+                        <span className="text-slate-400">Sauvegarde en cours…</span>
+                      </>
+                    )}
+                    {!isSaving && saveStatus === 'saved' && (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-emerald-600">Entretien sauvegardé</span>
+                      </>
+                    )}
+                    {!isSaving && saveStatus === 'error' && (
+                      <>
+                        <span className="text-red-500">Erreur de sauvegarde ·</span>
+                        <button onClick={() => debrief && saveInterview(debrief)} className="text-indigo-600 underline hover:text-indigo-700">
+                          Réessayer
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={resetSimulator}
+                    className="flex-1 py-2.5 flex items-center justify-center gap-1.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-200 transition-all"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    Accueil
+                  </button>
+                  <button
+                    onClick={resetSimulator}
+                    className="flex-1 py-2.5 flex items-center justify-center gap-1.5 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg transition-all"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Relancer
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* — Phase: History — */}
+            {phase === "history" && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 animate-in fade-in duration-300">
+
+                {/* Back button */}
                 <button
-                  onClick={resetSimulator}
-                  className="w-full py-2.5 flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg transition-all"
+                  onClick={() => {
+                    if (selectedHistoryInterview) {
+                      setSelectedHistoryInterview(null);
+                      setHistoryTab("evaluation");
+                    } else {
+                      setPhase("select");
+                    }
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Relancer un entretien
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  {selectedHistoryInterview ? "Retour à l'historique" : "Retour"}
                 </button>
+
+                {/* Detail view */}
+                {selectedHistoryInterview && (() => {
+                  const d = selectedHistoryInterview.debrief;
+                  const detailCfg = TYPE_CONFIG[selectedHistoryInterview.type] ?? { emoji: "🎯", label: selectedHistoryInterview.type };
+                  return (
+                    <div className="space-y-3">
+
+                      {/* Header */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{detailCfg.emoji}</span>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">{detailCfg.label}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            {new Date(selectedHistoryInterview.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Tabs */}
+                      <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+                        <button
+                          onClick={() => setHistoryTab("evaluation")}
+                          className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                            historyTab === "evaluation" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          Évaluation
+                        </button>
+                        <button
+                          onClick={() => setHistoryTab("conversation")}
+                          className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                            historyTab === "conversation" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                          }`}
+                        >
+                          Conversation
+                        </button>
+                      </div>
+
+                      {/* Tab: Évaluation */}
+                      {historyTab === "evaluation" && (
+                        <div className="space-y-3">
+                          <div className="flex flex-col items-center text-center pt-1">
+                            <div className="relative w-20 h-20">
+                              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="9" />
+                                <circle
+                                  cx="50" cy="50" r="40" fill="none"
+                                  stroke={d.score >= 90 ? "#22c55e" : d.score >= 75 ? "#8b5cf6" : d.score >= 60 ? "#6366f1" : d.score >= 40 ? "#f59e0b" : "#ef4444"}
+                                  strokeWidth="9" strokeLinecap="round"
+                                  strokeDasharray={`${(d.score / 100) * 251.3} 251.3`}
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-xl font-black text-slate-900 leading-none">{d.score}</span>
+                                <span className="text-[10px] font-bold text-slate-400">/100</span>
+                              </div>
+                            </div>
+                            <span className={`mt-2 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                              d.score >= 90 ? "bg-emerald-100 text-emerald-700" : d.score >= 75 ? "bg-violet-100 text-violet-700"
+                              : d.score >= 60 ? "bg-indigo-100 text-indigo-700" : d.score >= 40 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                            }`}>{d.mention}</span>
+                            <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed">{d.synthese}</p>
+                          </div>
+
+                          {d.points_forts.length > 0 && (
+                            <div className="space-y-1.5">
+                              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide px-1">Points forts</h4>
+                              {d.points_forts.map((s, i) => (
+                                <div key={i} className="flex items-start gap-2.5 p-2.5 bg-emerald-50 rounded-xl border border-emerald-100">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                  <p className="text-xs font-medium text-slate-700 leading-snug">{s}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {d.axes_amelioration.length > 0 && (
+                            <div className="space-y-1.5">
+                              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide px-1">Axes d&apos;amélioration</h4>
+                              {d.axes_amelioration.map((imp, i) => (
+                                <div key={i} className="flex items-start gap-2.5 p-2.5 bg-amber-50 rounded-xl border border-amber-100">
+                                  <ArrowUpRight className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                                  <p className="text-xs font-medium text-slate-700 leading-snug">{imp}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {d.analyse_par_question.length > 0 && (
+                            <div className="space-y-1.5">
+                              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide px-1">Analyse par question</h4>
+                              {d.analyse_par_question.map((aq) => {
+                                const qualiteColor =
+                                  aq.qualite_reponse === "Excellente" ? "text-emerald-600 bg-emerald-50 border-emerald-100"
+                                  : aq.qualite_reponse === "Bonne" ? "text-indigo-600 bg-indigo-50 border-indigo-100"
+                                  : aq.qualite_reponse === "Correcte" ? "text-slate-600 bg-slate-50 border-slate-200"
+                                  : aq.qualite_reponse === "Insuffisante" ? "text-amber-600 bg-amber-50 border-amber-100"
+                                  : "text-red-600 bg-red-50 border-red-100";
+                                return (
+                                  <div key={aq.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[10px] font-bold text-slate-500">Q{aq.id}</span>
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${qualiteColor}`}>{aq.qualite_reponse}</span>
+                                    </div>
+                                    <p className="text-[11px] font-medium text-slate-600 leading-snug">{aq.commentaire}</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {d.conseil && (
+                            <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                              <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide mb-1">Conseil</h4>
+                              <p className="text-xs font-medium text-slate-700 leading-relaxed">{d.conseil}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Tab: Conversation */}
+                      {historyTab === "conversation" && (
+                        <div className="space-y-2.5">
+                          {selectedHistoryInterview.messages.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                            >
+                              {msg.role === "recruiter" && (
+                                <div className="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 mt-0.5 text-xs">
+                                  👩‍💼
+                                </div>
+                              )}
+                              <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-[12px] font-medium leading-relaxed whitespace-pre-wrap ${
+                                msg.role === "recruiter"
+                                  ? "bg-slate-100 text-slate-800 rounded-tl-sm"
+                                  : "bg-indigo-600 text-white rounded-tr-sm"
+                              }`}>
+                                {msg.content}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* List view */}
+                {!selectedHistoryInterview && (
+                  <>
+                    {loadingHistory && (
+                      <div className="flex flex-col items-center justify-center gap-2 py-8">
+                        <div className="w-8 h-8 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
+                        <p className="text-xs font-medium text-slate-400">Chargement…</p>
+                      </div>
+                    )}
+
+                    {!loadingHistory && interviews.length === 0 && (
+                      <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+                        <History className="w-8 h-8 text-slate-200" />
+                        <p className="text-xs font-semibold text-slate-400">Aucun entretien enregistré</p>
+                        <p className="text-[11px] text-slate-300 font-medium">Lancez votre premier entretien pour le retrouver ici.</p>
+                      </div>
+                    )}
+
+                    {!loadingHistory && interviews.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide px-1">
+                          {interviews.length} entretien{interviews.length > 1 ? "s" : ""}
+                        </p>
+                        {interviews.filter(iv => iv.debrief).map((interview, i) => {
+                          const cfg = TYPE_CONFIG[interview.type] ?? { emoji: "🎯", label: interview.type, badge: "bg-slate-100 text-slate-700" };
+                          const d = interview.debrief;
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => { setSelectedHistoryInterview(interview); setHistoryTab("evaluation"); }}
+                              className="w-full flex items-center gap-3 p-3 bg-slate-50 hover:bg-indigo-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition-all text-left group"
+                            >
+                              <span className="text-xl shrink-0">{cfg.emoji}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-800">{cfg.label}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">
+                                  {new Date(interview.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
+                                  d.score >= 90 ? "bg-emerald-100 text-emerald-700" : d.score >= 75 ? "bg-violet-100 text-violet-700"
+                                  : d.score >= 60 ? "bg-indigo-100 text-indigo-700" : d.score >= 40 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                }`}>{d.score}/100</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>

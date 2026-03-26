@@ -127,8 +127,6 @@ function MonCVContent() {
             isMaster: isMaster,
             cvName: rawData.cvName || (isMaster ? "main" : ""),
             optimizedFor: (isMaster ? "" : (rawData.cvName || rawData.optimizedFor || content.optimizedFor || "")),
-            jobOffer: rawData.offer || "",
-            cover_letter: rawData.coverLetter || rawData.cover_letter || content.coverLetter || content.cover_letter || "",
             id: rawData._id
           };
         });
@@ -182,7 +180,6 @@ function MonCVContent() {
         availability: availability || 'immediate',
         isMain: updatedData.isMaster || false,
         cvName: updatedData.isMaster ? "main" : (updatedData.optimizedFor || "Version optimisée"),
-        offer: updatedData.jobOffer,
         data: cvContent
       };
 

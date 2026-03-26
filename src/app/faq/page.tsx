@@ -65,6 +65,31 @@ export const faqItems = [
       "Connectez-vous, accédez à « Mon CV », puis cliquez sur « Modifier » à côté du profil souhaité. L'éditeur vous permet de modifier chaque section (expériences, compétences, formations, résumé) et de mettre à jour votre photo de profil.",
   },
   {
+    question: "Qu'est-ce que le simulateur d'entretien ?",
+    answer:
+      "Le simulateur d'entretien est un outil intégré à NodalCV qui vous permet de vous entraîner à passer des entretiens d'embauche avant le jour J. Il joue le rôle d'un recruteur virtuel qui vous pose des questions adaptées à votre profil et à l'offre d'emploi ciblée, puis évalue vos réponses à la fin de la session.",
+  },
+  {
+    question: "Comment accéder au simulateur d'entretien ?",
+    answer:
+      "Le simulateur est accessible depuis deux endroits : dans votre espace « Candidatures » en cliquant sur l'icône 🎯 à côté d'une candidature, ou directement depuis l'éditeur de votre CV adapté. Il apparaît sous forme de panneau flottant que vous pouvez agrandir, réduire ou fermer à tout moment.",
+  },
+  {
+    question: "Quels types d'entretiens puis-je simuler ?",
+    answer:
+      "Quatre types d'entretiens sont disponibles : la Préqualification (appel RH de découverte, 15–20 min), l'entretien Technique (deep-dive sur vos compétences et projets), l'entretien Manager N+1 (avec votre futur supérieur hiérarchique) et l'entretien RH (motivation, valeurs, projet professionnel). Chaque type génère des questions spécifiques grâce à l'IA.",
+  },
+  {
+    question: "Comment fonctionne l'évaluation après l'entretien ?",
+    answer:
+      "À la fin de la simulation, l'IA analyse l'ensemble de vos échanges et produit un débrief complet : un score sur 100, une mention (Insuffisant à Excellent), une synthèse globale, vos points forts, vos axes d'amélioration, une analyse question par question et un conseil personnalisé. Le résultat est automatiquement sauvegardé dans votre historique.",
+  },
+  {
+    question: "Puis-je consulter l'historique de mes entretiens ?",
+    answer:
+      "Oui. Dans le simulateur d'entretien, un bouton « Historique des entretiens » vous donne accès à tous vos entretiens passés pour l'offre en cours. Pour chaque entretien, vous pouvez consulter la conversation complète (onglet « Conversation ») ainsi que l'évaluation détaillée (onglet « Évaluation »).",
+  },
+  {
     question: "NodalCV est-il gratuit ?",
     answer:
       "Oui, NodalCV est actuellement entièrement gratuit. La création de profil, l'optimisation IA, la publication en ligne et les statistiques sont accessibles sans abonnement.",

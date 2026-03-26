@@ -75,7 +75,20 @@ export interface CVData {
   isMaster?: boolean;
   optimizedFor?: string;
   cvName?: string;
+  /** @deprecated Utiliser OffreData.offerRaw */
   jobOffer?: string;
+  /** @deprecated Utiliser OffreData.coverLetter */
   cover_letter?: string;
   id?: string;
+}
+
+export interface OffreData {
+  _id?: string;
+  cvId: string;
+  cvName: string;
+  offerRaw: string;
+  coverLetter: string;
+  interviews?: unknown[];
+  createdAt?: string;
+  updatedAt?: string;
 }

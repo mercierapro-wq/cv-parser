@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { CVData } from "@/types/cv";
+import { CVData, OffreData } from "@/types/cv";
 import { sortExperiences } from "@/lib/utils";
 import {
   X,
@@ -37,9 +36,9 @@ export default function CandidaturesPage() {
 }
 
 function CandidaturesContent() {
-  const router = useRouter();
   const { user, loading: authLoading, login } = useAuth();
   const [cvs, setCvs] = useState<CVData[]>([]);
+  const [offres, setOffres] = useState<Record<string, OffreData>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -52,13 +51,34 @@ function CandidaturesContent() {
   // Application Manager state
   const [isApplicationManagerOpen, setIsApplicationManagerOpen] = useState(false);
   const [currentCvId, setCurrentCvId] = useState<string | null>(null);
-  const [coverLetterText, setCoverLetterText] = useState<string | null>(null);
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState<string | null>(null);
-  const [fetchedOffer, setFetchedOffer] = useState<string | null>(null);
   const [isFetchingOffer, setIsFetchingOffer] = useState(false);
 
   // Interview Simulator state
   const [interviewCv, setInterviewCv] = useState<CVData | null>(null);
+
+  const handleOpenInterview = async (cv: CVData) => {
+    if (cv.id && !offres[cv.id]) {
+      try {
+        const token = await user?.getIdToken();
+        const response = await fetch("/api/n8n-proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ action: "get-offer", cvId: cv.id }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const rawData = Array.isArray(data) ? data[0] : data;
+          if (rawData && cv.id) {
+            setOffres(prev => ({ ...prev, [cv.id!]: rawData as OffreData }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching offer for interview:", error);
+      }
+    }
+    setInterviewCv(cv);
+  };
 
   // Delete state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -148,8 +168,6 @@ function CandidaturesContent() {
             isMaster: isMaster,
             cvName: rawData.cvName || (isMaster ? "main" : ""),
             optimizedFor: (isMaster ? "" : (rawData.cvName || rawData.optimizedFor || content.optimizedFor || "")),
-            jobOffer: rawData.offer || "",
-            cover_letter: rawData.coverLetter || rawData.cover_letter || content.coverLetter || content.cover_letter || "",
             id: rawData._id
           };
         });
@@ -170,54 +188,115 @@ function CandidaturesContent() {
     }
   }, [user, authLoading]);
 
+  // Charger les offres pour toutes les candidatures
+  useEffect(() => {
+    const fetchOffres = async () => {
+      if (!user) return;
+      const candidatureList = cvs.filter(cv => !cv.isMaster && cv.id);
+      if (!candidatureList.length) return;
+
+      try {
+        const token = await user.getIdToken();
+        const results = await Promise.allSettled(
+          candidatureList.map(cv =>
+            fetch("/api/n8n-proxy", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+              body: JSON.stringify({ action: "get-offer", cvId: cv.id })
+            }).then(r => r.ok ? r.json() : null)
+          )
+        );
+
+        const loaded: Record<string, OffreData> = {};
+        candidatureList.forEach((cv, i) => {
+          const result = results[i];
+          if (result.status === "fulfilled" && result.value) {
+            const data = Array.isArray(result.value) ? result.value[0] : result.value;
+            if (data && cv.id) loaded[cv.id] = data as OffreData;
+          }
+        });
+        setOffres(loaded);
+      } catch (err) {
+        console.error("Error fetching offers:", err);
+      }
+    };
+
+    fetchOffres();
+  }, [cvs, user]);
+
   const handleSaveNewCandidature = async (optimizedData: CVData) => {
     if (!user) return;
 
     setIsSaving(true);
     try {
       const token = await user.getIdToken();
-      const { visible, availability, slug: currentSlug, profilePicture, profilePictureTransform, ...cvContent } = optimizedData;
+      const { visible, availability, slug: currentSlug, profilePicture, profilePictureTransform, jobOffer, cover_letter, ...cvContent } = optimizedData as any;
 
       if (cvContent.personne) {
         const { profilePicture: _, profilePictureTransform: __, ...cleanPersonne } = cvContent.personne as any;
         cvContent.personne = cleanPersonne;
       }
 
-      const payload = {
+      const candidatureName = optimizedData.optimizedFor || optimizedData.cvName || "Candidature";
+      const newSlug = `cv-${Date.now()}`;
+
+      // Étape 1 : créer le CV
+      const cvPayload = {
         action: "insert-cv",
         email: user.email,
         nom: optimizedData.personne.nom,
         prenom: optimizedData.personne.prenom,
         profilePicture: null,
         profilePictureTransform: null,
-        slug: `cv-${Date.now()}`,
+        slug: newSlug,
         visible: false,
         availability: availability || 'immediate',
         isMain: false,
-        cvName: optimizedData.optimizedFor || "Candidature",
-        offer: optimizedData.jobOffer,
+        cvName: candidatureName,
         data: cvContent
       };
 
       const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(cvPayload),
       });
 
-      if (!response.ok) throw new Error("Erreur lors de l'enregistrement");
+      if (!response.ok) throw new Error("Erreur lors de l'enregistrement du CV");
 
       const result = await response.json();
-      const slug = result[0]?.slug || payload.slug;
+      const savedSlug = result[0]?.slug || newSlug;
+      const newCvId: string = result[0]?._id || result[0]?.id;
+
+      // Étape 2 : créer l'Offre associée
+      if (optimizedData.jobOffer && newCvId) {
+        await fetch("/api/n8n-proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({
+            action: "save-offer",
+            cvId: newCvId,
+            cvName: candidatureName,
+            offerRaw: optimizedData.jobOffer
+          }),
+        });
+
+        setOffres(prev => ({
+          ...prev,
+          [newCvId]: {
+            cvId: newCvId,
+            cvName: candidatureName,
+            offerRaw: optimizedData.jobOffer || "",
+            coverLetter: ""
+          }
+        }));
+      }
 
       const newCandidature: CVData = {
         ...optimizedData,
-        slug,
+        slug: savedSlug,
         isMaster: false,
-        id: result[0]?._id || result[0]?.id
+        id: newCvId
       };
 
       setCvs(prev => [...prev, newCandidature]);
@@ -256,6 +335,10 @@ function CandidaturesContent() {
       if (!response.ok) throw new Error("Erreur lors de la suppression");
 
       setCvs(prevCvs => prevCvs.filter(cv => cv.id !== cvToDeleteId));
+      setOffres(prev => {
+        const { [cvToDeleteId]: _, ...rest } = prev;
+        return rest;
+      });
       setNotification({ message: "Candidature supprimée avec succès", type: 'success' });
       setIsDeleteModalOpen(false);
     } catch (err) {
@@ -268,54 +351,40 @@ function CandidaturesContent() {
   };
 
   const handleOpenApplicationManager = async (cv: CVData) => {
-    if (!cv.cover_letter && cv.id) {
+    setCurrentCvId(cv.id || null);
+
+    // Charger l'offre depuis la table Offre si elle n'est pas déjà en cache
+    if (cv.id && !offres[cv.id]) {
       setIsFetchingOffer(true);
       try {
         const token = await user?.getIdToken();
         const response = await fetch("/api/n8n-proxy", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            action: "get-offer",
-            _id: cv.id
-          }),
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ action: "get-offer", cvId: cv.id }),
         });
 
         if (response.ok) {
           const data = await response.json();
           const rawData = Array.isArray(data) ? data[0] : data;
-          const coverLetter = rawData?.coverLetter;
-          const offerText = rawData?.offer;
-
-          if (offerText) setFetchedOffer(offerText);
-
-          if (coverLetter) {
-            setCoverLetterText(coverLetter);
-            setCurrentCvId(cv.id || null);
-            setCvs(prev => prev.map(c => c.id === cv.id ? { ...c, cover_letter: coverLetter } : c));
-            setIsApplicationManagerOpen(true);
-            setIsFetchingOffer(false);
-            return;
+          if (rawData && cv.id) {
+            setOffres(prev => ({ ...prev, [cv.id!]: rawData as OffreData }));
           }
         }
       } catch (error) {
-        console.error("Error fetching cover letter:", error);
+        console.error("Error fetching offer:", error);
       } finally {
         setIsFetchingOffer(false);
       }
     }
 
-    setCoverLetterText(cv.cover_letter || "");
-    setCurrentCvId(cv.id || null);
     setIsApplicationManagerOpen(true);
   };
 
   const handleGenerateCoverLetter = async () => {
     const cv = cvs.find(c => c.id === currentCvId);
-    if (!cv || !cv.jobOffer || !currentCvId || !user) {
+    const offre = currentCvId ? offres[currentCvId] : null;
+    if (!cv || !offre?.offerRaw || !currentCvId || !user) {
       setNotification({ message: "L'offre d'emploi est manquante pour générer la lettre", type: 'error' });
       return;
     }
@@ -327,14 +396,11 @@ function CandidaturesContent() {
 
       const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({
           action: "create-cover-letter",
           cv: cvWithoutImage,
-          job_offer: cv.jobOffer
+          job_offer: offre.offerRaw
         }),
       });
 
@@ -345,8 +411,10 @@ function CandidaturesContent() {
 
       if (!text) throw new Error("Format de réponse invalide");
 
-      setCoverLetterText(text);
-      setCvs(prev => prev.map(c => c.id === currentCvId ? { ...c, cover_letter: text } : c));
+      setOffres(prev => currentCvId ? {
+        ...prev,
+        [currentCvId]: { ...prev[currentCvId], coverLetter: text }
+      } : prev);
       setNotification({ message: "Lettre de motivation générée !", type: 'success' });
     } catch (error) {
       console.error(error);
@@ -395,33 +463,31 @@ function CandidaturesContent() {
 
     try {
       const token = await user.getIdToken();
+      const cv = cvs.find(c => c.id === currentCvId);
+      const candidatureName = cv?.optimizedFor || cv?.cvName || "Candidature";
+
       const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({
           action: "save-offer",
-          _id: currentCvId,
-          offer: offer
+          cvId: currentCvId,
+          cvName: candidatureName,
+          offerRaw: offer
         }),
       });
 
       if (!response.ok) throw new Error("Erreur lors de l'enregistrement de l'offre");
 
-      const cv = cvs.find(c => c.id === currentCvId);
-      const currentOffer = fetchedOffer;
-      const isNewOffer = currentOffer !== offer;
-
-      setCvs(prev => prev.map(c => c.id === currentCvId ? {
-        ...c,
-        jobOffer: c.isMaster ? offer : c.jobOffer,
-        cover_letter: isNewOffer ? "" : c.cover_letter
-      } : c));
-
-      if (cv && !cv.isMaster) setFetchedOffer(offer);
-      if (isNewOffer) setCoverLetterText("");
+      const isNewOffer = offres[currentCvId]?.offerRaw !== offer;
+      setOffres(prev => ({
+        ...prev,
+        [currentCvId]: {
+          ...(prev[currentCvId] || { cvId: currentCvId, cvName: candidatureName, coverLetter: "" }),
+          offerRaw: offer,
+          coverLetter: isNewOffer ? "" : (prev[currentCvId]?.coverLetter || "")
+        }
+      }));
     } catch (error) {
       console.error(error);
       throw error;
@@ -438,20 +504,20 @@ function CandidaturesContent() {
       const token = await user.getIdToken();
       const response = await fetch("/api/n8n-proxy", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({
           action: "save-cover-letter",
-          _id: currentCvId,
+          cvId: currentCvId,
           coverLetter: currentText
         }),
       });
 
       if (!response.ok) throw new Error("Erreur lors de l'enregistrement de la lettre");
 
-      setCoverLetterText(currentText);
+      setOffres(prev => currentCvId ? {
+        ...prev,
+        [currentCvId]: { ...prev[currentCvId], coverLetter: currentText }
+      } : prev);
       setNotification({ message: "Lettre de motivation enregistrée !", type: 'success' });
 
       setTimeout(() => {
@@ -560,10 +626,10 @@ function CandidaturesContent() {
                   {/* Status badges */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      cv.cover_letter ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-slate-50 text-slate-400 border border-slate-200'
+                      offres[cv.id || '']?.coverLetter ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-slate-50 text-slate-400 border border-slate-200'
                     }`}>
                       <FileText className="w-3 h-3" />
-                      Lettre {cv.cover_letter ? 'rédigée' : 'à rédiger'}
+                      Lettre {offres[cv.id || '']?.coverLetter ? 'rédigée' : 'à rédiger'}
                     </span>
                   </div>
 
@@ -583,7 +649,7 @@ function CandidaturesContent() {
                       <Briefcase className="w-3.5 h-3.5" /> Lettre
                     </button>
                     <button
-                      onClick={() => setInterviewCv(cv)}
+                      onClick={() => handleOpenInterview(cv)}
                       className="flex items-center justify-center gap-1.5 py-2 px-3 bg-violet-50 text-violet-700 rounded-xl text-xs font-bold hover:bg-violet-100 transition-all"
                       title="Simulateur d'entretien"
                     >
@@ -643,21 +709,26 @@ function CandidaturesContent() {
       <ApplicationManagerModal
         isOpen={isApplicationManagerOpen}
         onClose={() => setIsApplicationManagerOpen(false)}
-        cvData={cvs.find(c => c.id === currentCvId) || (masterCv as CVData)}
+        cvData={{
+          ...(cvs.find(c => c.id === currentCvId) || (masterCv as CVData)),
+          jobOffer: currentCvId ? (offres[currentCvId]?.offerRaw || "") : "",
+          cover_letter: currentCvId ? (offres[currentCvId]?.coverLetter || "") : ""
+        }}
         onSaveOffer={handleSaveOffer}
         onSaveCoverLetter={handleSaveCoverLetter}
         onDownloadCoverLetterPDF={handleDownloadCoverLetterPDF}
         onGenerateCoverLetter={handleGenerateCoverLetter}
         isGeneratingCoverLetter={!!generatingCoverLetter}
         isFetchingOffer={isFetchingOffer}
-        fetchedOffer={fetchedOffer}
+        fetchedOffer={null}
       />
 
       <InterviewSimulator
         isOpen={!!interviewCv}
         onClose={() => setInterviewCv(null)}
         cvData={interviewCv || (masterCv as CVData)}
-        jobOffer={interviewCv?.jobOffer}
+        jobOffer={(interviewCv?.id ? offres[interviewCv.id]?.offerRaw : undefined) || interviewCv?.jobOffer}
+        cvId={interviewCv?.id}
         defaultExpanded={true}
       />
 

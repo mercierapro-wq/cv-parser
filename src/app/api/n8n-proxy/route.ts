@@ -7,11 +7,13 @@ const ENDPOINT_MAP: Record<string, string | undefined> = {
   "optimize-desc": process.env.NEXT_PUBLIC_OPTIMIZE_DESC_URL,
   "optimize-cv": process.env.NEXT_PUBLIC_OPTIMIZE_CV_URL,
   "get-offer": process.env.NEXT_PUBLIC_GET_OFFER_URL,
-  "delete-cv": process.env.NEXT_PUBLIC_DELETE_CV_URL,
+  "save-offer": process.env.NEXT_PUBLIC_SAVE_OFFER_URL,
   "create-cover-letter": process.env.NEXT_PUBLIC_CREATE_COVER_LETTER_URL,
   "save-cover-letter": process.env.NEXT_PUBLIC_SAVE_COVER_LETTER_URL,
-  "save-offer": process.env.NEXT_PUBLIC_SAVE_OFFER_URL,
+  "get-cover-letter": process.env.NEXT_PUBLIC_GET_COVER_LETTER_URL,
+  "delete-cv": process.env.NEXT_PUBLIC_DELETE_CV_URL,
   "optimize-by-offer": process.env.NEXT_PUBLIC_OPTIMIZE_BY_OFFER_URL,
+  "get-offer-by-url": process.env.NEXT_PUBLIC_GET_OFFER_BY_URL_URL,
   "insert-cv": process.env.NEXT_PUBLIC_INSERT_CV_URL,
   "tracking": process.env.NEXT_PUBLIC_TRACKING_URL,
   "get-analytics": process.env.NEXT_PUBLIC_GET_ANALYTICS_URL,
@@ -20,6 +22,8 @@ const ENDPOINT_MAP: Record<string, string | undefined> = {
   "parse-cv": process.env.NEXT_PUBLIC_PARSE_CV_URL,
   "generate-interview-questions": process.env.NEXT_PUBLIC_GENERATE_INTERVIEW_QUESTIONS_URL,
   "evaluate-interview": process.env.NEXT_PUBLIC_EVALUATE_INTERVIEW_URL,
+  "save-interview": process.env.NEXT_PUBLIC_SAVE_INTERVIEW_URL,
+  "get-interviews": process.env.NEXT_PUBLIC_GET_INTERVIEWS_URL,
 };
 
 export async function POST(req: Request) {
@@ -50,15 +54,19 @@ export async function POST(req: Request) {
       "optimize-desc", 
       "optimize-cv", 
       "get-offer",
-      "delete-cv", 
-      "create-cover-letter", 
-      "save-cover-letter", 
-      "save-offer", 
+      "save-offer",
+      "create-cover-letter",
+      "save-cover-letter",
+      "get-cover-letter",
+      "delete-cv",
       "optimize-by-offer",
+      "get-offer-by-url",
       "get-analytics",
       "get-cv",
       "generate-interview-questions",
-      "evaluate-interview"
+      "evaluate-interview",
+      "save-interview",
+      "get-interviews"
     ];
 
     if (protectedActions.includes(action) && (!session || !session.user.email)) {

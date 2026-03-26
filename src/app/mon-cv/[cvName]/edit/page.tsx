@@ -216,12 +216,28 @@ function EditCVContent() {
           isMaster: isMaster,
           cvName: targetCv.cvName || (isMaster ? "main" : ""),
           optimizedFor: isMaster ? "" : (targetCv.cvName || targetCv.optimizedFor || ""),
-          jobOffer: targetCv.offer || "",
-          cover_letter: targetCv.coverLetter || targetCv.cover_letter || content.coverLetter || content.cover_letter || "",
           id: targetCv._id
         };
 
         setCvData(prev => prev || normalized);
+
+        // Charger l'offre depuis la table Offre (pour les CVs non-master)
+        if (!isMaster && targetCv._id) {
+          try {
+            const offerResponse = await fetch("/api/n8n-proxy", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+              body: JSON.stringify({ action: "get-offer", cvId: targetCv._id }),
+            });
+            if (offerResponse.ok) {
+              const offerData = await offerResponse.json();
+              const rawOffer = Array.isArray(offerData) ? offerData[0] : offerData;
+              if (rawOffer?.offerRaw) setFetchedOffer(rawOffer.offerRaw);
+            }
+          } catch {
+            // ignore, l'entretien fonctionnera sans offre
+          }
+        }
       } catch (err) {
         console.error(err);
         router.push("/mon-cv");
@@ -285,7 +301,6 @@ function EditCVContent() {
         availability: availability || 'immediate',
         isMain: updatedData.isMaster ?? (cvNameParam === 'main'),
         cvName: (updatedData.isMaster ?? (cvNameParam === 'main')) ? "main" : (updatedData.optimizedFor || cvNameParam),
-        offer: updatedData.jobOffer,
         data: cvContent
       };
 
